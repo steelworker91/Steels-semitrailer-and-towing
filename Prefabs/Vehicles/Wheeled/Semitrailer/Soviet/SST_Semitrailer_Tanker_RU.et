@@ -1,0 +1,32 @@
+GenericEntity : "{E2DF1CB5D1605899}Prefabs/Vehicles/Wheeled/Semitrailer/SST_Semitrailer_Tanker.et" {
+ ID "B8A7C2BFBB154BD6"
+ components {
+  MeshObject "{680CF36337B35C97}" {
+   Object "{DAFC60456FED5B57}Assets/Vehicles/Semitrailer/SST_Tanker_RU.xob"
+  }
+  SST_PaintSchemeComponent "{B82D3E46CE12344D}" {
+   m_aSwaps {
+    SST_MaterialSwap "{DF302BC6B44876AA}" {
+     m_sSource "SST_WheelHubPaint"
+     m_sTarget "{B0B1E4609DD4BF43}Assets/Vehicles/Semitrailer/Soviet/SST_WheelHubPaint_RU.emat"
+    }
+   }
+  }
+  SCR_EditableSystemComponent "{31405F20CDCBCC5E}" {
+   m_UIInfo SCR_EditableEntityUIInfo "{B617870A2457A987}" {
+    Name "Fuel Tank Semitrailer (Soviet)"
+    Description "Semitrailer with a lengthened fuel tank (11200 l) in the paint and markings of the vanilla Ural-4320 cistern. Refuels vehicles and jerrycans like the vanilla fuel truck. Back a tractor under the kingpin to couple it."
+    m_aAuthoredLabels + {
+     FACTION_USSR
+    }
+   }
+  }
+  SCR_PreviewEntityComponent "{E71279C8E4470619}" {
+   m_aEntries {
+    SCR_BasePreviewEntry "{2B6C89D79EDED9B0}" {
+     m_Mesh "{DAFC60456FED5B57}Assets/Vehicles/Semitrailer/SST_Tanker_RU.xob"
+    }
+   }
+  }
+ }
+}

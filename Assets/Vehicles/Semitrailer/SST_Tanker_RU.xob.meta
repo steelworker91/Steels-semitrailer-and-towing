@@ -1,0 +1,100 @@
+MetaFileClass {
+ Name "{DAFC60456FED5B57}Assets/Vehicles/Semitrailer/SST_Tanker_RU.xob"
+ Configurations {
+  FBXResourceClass PC {
+   MaterialAssigns {
+    MaterialAssignClass "{8F9654FE0EDEBBC2}" {
+     SourceMaterial "SST_TankDecalsRU"
+     AssignedMaterial "{1D2447A9AEB55B76}Assets/Vehicles/Semitrailer/Soviet/SST_TankDecals_RU.emat"
+    }
+    MaterialAssignClass "{8E6E26FB75F55D26}" {
+     SourceMaterial "SST_TankPlatesRU"
+     AssignedMaterial "{4F7171BD46554466}Assets/Vehicles/Wheeled/Ural4320/Data/Ural_4320_Cistern_Unique.emat"
+    }
+    MaterialAssignClass "{78269CFD2092F717}" {
+     SourceMaterial "SST_Tank"
+     AssignedMaterial "{EBA19BDD00AC6826}Assets/Vehicles/Semitrailer/SST_Tank.emat"
+    }
+    MaterialAssignClass "{1079DE91717896A2}" {
+     SourceMaterial "SST_TankPaint"
+     AssignedMaterial "{BAB6374943CE9411}Assets/Vehicles/Semitrailer/Soviet/SST_TankPaint_RU.emat"
+    }
+    MaterialAssignClass "{5D9CA9F95422CC27}" {
+     SourceMaterial "SST_SemitrailerPaint"
+     AssignedMaterial "{D50BF5720D4A1B48}Assets/Vehicles/Semitrailer/Soviet/SST_SemitrailerPaint_RU.emat"
+    }
+    MaterialAssignClass "{31B25B2292D999EB}" {
+     SourceMaterial "SST_Semitrailer"
+     AssignedMaterial "{309EBC6CDF9436EA}Assets/Vehicles/Semitrailer/SST_Semitrailer.emat"
+    }
+   }
+   MeshParams {
+    MeshParam SST_Tanker {
+    }
+   }
+   GeometryParams {
+    GeometryParam UBX_frame {
+     LayerPreset "VehicleFireView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_rear {
+     LayerPreset "VehicleFireView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_bogie {
+     LayerPreset "VehicleFireView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_wheels {
+     LayerPreset "VehicleComplexView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_legL {
+     LayerPreset "VehicleComplexView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_legR {
+     LayerPreset "VehicleComplexView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_tank {
+     LayerPreset "VehicleFireView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_tankbase {
+     LayerPreset "VehicleFireView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+   }
+   ApplicationVendor "Blender Foundation"
+   ApplicationName "Blender (stable FBX IO)"
+   ApplicationVersion "5.0.0"
+  }
+  FBXResourceClass XBOX_ONE : PC {
+  }
+  FBXResourceClass XBOX_SERIES : PC {
+  }
+  FBXResourceClass PS4 : PC {
+  }
+  FBXResourceClass PS5 : PC {
+  }
+  FBXResourceClass HEADLESS : PC {
+  }
+ }
+}

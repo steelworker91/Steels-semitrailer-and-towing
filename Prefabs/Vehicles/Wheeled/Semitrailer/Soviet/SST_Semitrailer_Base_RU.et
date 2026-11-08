@@ -1,0 +1,30 @@
+GenericEntity : "{C174CBB6F089C2EB}Prefabs/Vehicles/Wheeled/Semitrailer/SST_Semitrailer_Base.et" {
+ ID "25E47EAB2BAF889D"
+ components {
+  MeshObject "{680CF36337B35C97}" {
+   Materials {
+    MaterialAssignClass "{59185C4C31C9A2D1}" {
+     SourceMaterial "SST_SemitrailerPaint"
+     AssignedMaterial "{D50BF5720D4A1B48}Assets/Vehicles/Semitrailer/Soviet/SST_SemitrailerPaint_RU.emat"
+    }
+   }
+  }
+  SST_PaintSchemeComponent "{6999F0794BD207AF}" {
+   m_aSwaps {
+    SST_MaterialSwap "{508BD9B35C6377D9}" {
+     m_sSource "SST_WheelHubPaint"
+     m_sTarget "{B0B1E4609DD4BF43}Assets/Vehicles/Semitrailer/Soviet/SST_WheelHubPaint_RU.emat"
+    }
+   }
+  }
+  SCR_EditableSystemComponent "{31405F20CDCBCC5E}" {
+   m_UIInfo SCR_EditableEntityUIInfo "{B617870A2457A987}" {
+    Name "Semitrailer (Soviet)"
+    Description "Flatbed semitrailer in Soviet paint. Back a tractor under the kingpin to couple it, uncouple it at the front left of the trailer."
+    m_aAuthoredLabels + {
+     FACTION_USSR
+    }
+   }
+  }
+ }
+}

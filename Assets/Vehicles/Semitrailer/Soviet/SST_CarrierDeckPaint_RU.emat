@@ -1,0 +1,6 @@
+MatPBRMulti : "{0C8289287F937461}Assets/Vehicles/Wheeled/Ural4320/Data/Ural_4320_Body.emat" {
+ VFXMap "{89E7A46231956F80}Assets/Vehicles/Semitrailer/Soviet/SST_RU_Paint_VFX.edds"
+ GlobalMCRMap "{643813A6355F5796}Assets/Vehicles/Semitrailer/Soviet/SST_RU_Paint_MCR.edds"
+ MaskMap "{CE1450C65129643C}Assets/Vehicles/Semitrailer/Soviet/SST_RU_Paint_MASK.edds"
+ GlobalNMOMap "{DF2E9E04420B1D70}Assets/Vehicles/Semitrailer/SST_CarrierDeckPaint_NMO.edds"
+}

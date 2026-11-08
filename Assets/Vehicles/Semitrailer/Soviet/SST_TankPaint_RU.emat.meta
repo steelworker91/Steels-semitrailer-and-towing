@@ -1,0 +1,17 @@
+MetaFileClass {
+ Name "{BAB6374943CE9411}Assets/Vehicles/Semitrailer/Soviet/SST_TankPaint_RU.emat"
+ Configurations {
+  EMATResourceClass PC {
+  }
+  EMATResourceClass XBOX_ONE : PC {
+  }
+  EMATResourceClass XBOX_SERIES : PC {
+  }
+  EMATResourceClass PS4 : PC {
+  }
+  EMATResourceClass PS5 : PC {
+  }
+  EMATResourceClass HEADLESS : PC {
+  }
+ }
+}

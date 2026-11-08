@@ -1,0 +1,34 @@
+GenericEntity : "{ACFC6ADA3E34E55E}Prefabs/Vehicles/Wheeled/Semitrailer/SST_Semitrailer_Supply.et" {
+ ID "1E3A6EFC6ECB9393"
+ components {
+  MeshObject "{680CF36337B35C97}" {
+   Materials {
+    MaterialAssignClass "{523364D0724D574B}" {
+     SourceMaterial "SST_SemitrailerPaint"
+     AssignedMaterial "{D50BF5720D4A1B48}Assets/Vehicles/Semitrailer/Soviet/SST_SemitrailerPaint_RU.emat"
+    }
+    MaterialAssignClass "{2D4DF6B090C616E8}" {
+     SourceMaterial "SST_SupplyDeckPaint"
+     AssignedMaterial "{826450660E22C6FD}Assets/Vehicles/Semitrailer/Soviet/SST_SupplyDeckPaint_RU.emat"
+    }
+   }
+  }
+  SST_PaintSchemeComponent "{759D08D4B1FC1C28}" {
+   m_aSwaps {
+    SST_MaterialSwap "{DB8EA8F6E427DF66}" {
+     m_sSource "SST_WheelHubPaint"
+     m_sTarget "{B0B1E4609DD4BF43}Assets/Vehicles/Semitrailer/Soviet/SST_WheelHubPaint_RU.emat"
+    }
+   }
+  }
+  SCR_EditableSystemComponent "{31405F20CDCBCC5E}" {
+   m_UIInfo SCR_EditableEntityUIInfo "{B617870A2457A987}" {
+    Name "Supply Semitrailer (Soviet)"
+    Description "Box semitrailer for supplies in Soviet paint, holds 4000 supplies. Load and unload supplies at the sides or the rear like on a supply truck. Back a tractor under the kingpin to couple it."
+    m_aAuthoredLabels + {
+     FACTION_USSR
+    }
+   }
+  }
+ }
+}

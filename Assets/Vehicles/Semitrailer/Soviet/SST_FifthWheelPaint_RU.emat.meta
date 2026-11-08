@@ -1,0 +1,17 @@
+MetaFileClass {
+ Name "{04E1D2E27CECCA6C}Assets/Vehicles/Semitrailer/Soviet/SST_FifthWheelPaint_RU.emat"
+ Configurations {
+  EMATResourceClass PC {
+  }
+  EMATResourceClass XBOX_ONE : PC {
+  }
+  EMATResourceClass XBOX_SERIES : PC {
+  }
+  EMATResourceClass PS4 : PC {
+  }
+  EMATResourceClass PS5 : PC {
+  }
+  EMATResourceClass HEADLESS : PC {
+  }
+ }
+}

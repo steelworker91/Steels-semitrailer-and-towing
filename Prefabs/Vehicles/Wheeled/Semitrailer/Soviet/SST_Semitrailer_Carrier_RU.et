@@ -1,0 +1,34 @@
+GenericEntity : "{CF8D06387A4E6CB0}Prefabs/Vehicles/Wheeled/Semitrailer/SST_Semitrailer_Carrier.et" {
+ ID "F908EFB24612E834"
+ components {
+  MeshObject "{680CF36337B35C97}" {
+   Materials {
+    MaterialAssignClass "{FD5921A0373F4061}" {
+     SourceMaterial "SST_SemitrailerPaint"
+     AssignedMaterial "{D50BF5720D4A1B48}Assets/Vehicles/Semitrailer/Soviet/SST_SemitrailerPaint_RU.emat"
+    }
+    MaterialAssignClass "{779AA946E55FD2E1}" {
+     SourceMaterial "SST_CarrierDeckPaint"
+     AssignedMaterial "{636F625617EE028C}Assets/Vehicles/Semitrailer/Soviet/SST_CarrierDeckPaint_RU.emat"
+    }
+   }
+  }
+  SST_PaintSchemeComponent "{6C5862BD11D22C0D}" {
+   m_aSwaps {
+    SST_MaterialSwap "{174200FF85D0299F}" {
+     m_sSource "SST_WheelHubPaint"
+     m_sTarget "{B0B1E4609DD4BF43}Assets/Vehicles/Semitrailer/Soviet/SST_WheelHubPaint_RU.emat"
+    }
+   }
+  }
+  SCR_EditableSystemComponent "{31405F20CDCBCC5E}" {
+   m_UIInfo SCR_EditableEntityUIInfo "{B617870A2457A987}" {
+    Name "Vehicle Carrier Semitrailer (Soviet)"
+    Description "Flatbed semitrailer for vehicles and helicopters in Soviet paint. Use 'Load onto trailer' on an empty vehicle near the ramps, 'Unload vehicle' at the ramps puts the rearmost one back on the ground."
+    m_aAuthoredLabels + {
+     FACTION_USSR
+    }
+   }
+  }
+ }
+}
