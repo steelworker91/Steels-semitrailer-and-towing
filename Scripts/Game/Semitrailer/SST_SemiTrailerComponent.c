@@ -86,8 +86,6 @@ class SST_SemiTrailerComponent : ScriptComponent
 	protected bool m_bNodePosSet;
 	protected bool m_bApplyPark;
 	protected BaseLightManagerComponent m_LightManager;
-	protected SST_VehicleCarrierComponent m_Carrier;
-	protected bool m_bCarrierChecked;
 	protected bool m_bSimulated;
 	protected bool m_bHasCargo;
 	protected int m_iCargoState = -1;
@@ -507,16 +505,14 @@ class SST_SemiTrailerComponent : ScriptComponent
 		if (m_bHasCargo)
 			mass += m_fCargoMass;
 
-		if (!m_bCarrierChecked)
-		{
-			m_Carrier = SST_VehicleCarrierComponent.Cast(GetOwner().FindComponent(SST_VehicleCarrierComponent));
-			m_bCarrierChecked = true;
-		}
+		return mass + GetExtraLoadMass();
+	}
 
-		if (m_Carrier)
-			mass += m_Carrier.GetLoadedMass();
-
-		return mass;
+	//------------------------------------------------------------------------------------------------
+	//! Load that is not in the cargo slot (vehicles on a carrier deck and the like), add-ons override it
+	float GetExtraLoadMass()
+	{
+		return 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
