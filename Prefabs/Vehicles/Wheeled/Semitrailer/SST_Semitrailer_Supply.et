@@ -1,0 +1,87 @@
+GenericEntity : "{C174CBB6F089C2EB}Prefabs/Vehicles/Wheeled/Semitrailer/SST_Semitrailer_Base.et" {
+ ID "FAB2509B73394A0E"
+ components {
+  MeshObject "{680CF36337B35C97}" {
+   Object "{E825680C995E2599}Assets/Vehicles/Semitrailer/SST_Supply.xob"
+  }
+  SST_SemiTrailerComponent "{36C70A973A6D5660}" {
+   m_fEmptyMass 9000
+   m_sCargoGeom ""
+   m_sNoVehicleGeoms "UBX_frame UBX_bed"
+  }
+  SCR_ResourceComponent "{96DD678D9036BEAB}" {
+   m_aContainers {
+    SCR_ResourceContainer "{56268F169C71BFCE}" {
+     m_eResourceRights ALL
+     m_eStorageType CARGO_VEHICLE
+     m_fResourceValueMax 4000
+    }
+   }
+   m_aConsumers {
+    SCR_ResourceConsumer "{6D50AD83124BDA55}" : "{4126DC9D9F44E513}Configs/Resources/Supplies/Consumers/Consumer_VehicleLoad.conf" {
+    }
+    SCR_ResourceConsumer "{158E842ED2712493}" : "{3FF0B8C036F14239}Configs/Resources/Supplies/Consumers/Consumer_VehicleUnload.conf" {
+    }
+   }
+   m_aGenerators {
+    SCR_ResourceGenerator "{F73561A5918D178B}" : "{48782547A13061E2}Configs/Resources/Supplies/Generators/Generator_VehicleLoad.conf" {
+    }
+    SCR_ResourceGenerator "{2211D964E10837EA}" : "{F8496BD9E1CE43B3}Configs/Resources/Supplies/Generators/Generator_VehicleUnload.conf" {
+    }
+   }
+  }
+  ActionsManagerComponent "{FDCA8E4B2ABB70F1}" {
+   ActionContexts {
+    UserActionContext "{1BA2D9B1727CBC9F}" {
+     ContextName "supplies_rear"
+     Position PointInfo "{CDB0FADBB52792FE}" {
+      Offset 0 0 -10.9
+     }
+     Radius 2.5
+    }
+    UserActionContext "{E899F0FD7D65F1AB}" {
+     ContextName "supplies_left"
+     Position PointInfo "{8D2EEC725874425F}" {
+      Offset -1.45 0 -5
+     }
+     Radius 2.5
+    }
+    UserActionContext "{242ABFEA1FE90D8E}" {
+     ContextName "supplies_right"
+     Position PointInfo "{18276D904039F136}" {
+      Offset 1.45 0 -5
+     }
+     Radius 2.5
+    }
+   }
+   additionalActions {
+    SCR_ResourceContainerVehicleLoadAction "{D4208A1609007622}" : "{A0E53319BFA4E848}Configs/Resources/Supplies/Actions/Supplies_Vehicle_Load.conf" {
+     ParentContextList {
+      "supplies_rear" "supplies_left" "supplies_right"
+     }
+    }
+    SCR_ResourceContainerVehicleUnloadAction "{F26F6D0429F5387B}" : "{F10C4B3E2E87F15B}Configs/Resources/Supplies/Actions/Supplies_Vehicle_Unload.conf" {
+     ParentContextList {
+      "supplies_rear" "supplies_left" "supplies_right"
+     }
+    }
+   }
+  }
+  SCR_EditableSystemComponent "{31405F20CDCBCC5E}" {
+   m_UIInfo SCR_EditableEntityUIInfo "{B617870A2457A987}" {
+    Name "Supply Semitrailer"
+    Description "Box semitrailer for supplies, holds 4000 supplies. Load and unload supplies at the sides or the rear like on a supply truck. Back a tractor under the kingpin to couple it."
+    m_aAuthoredLabels {
+     CONTENT_MODDED TRAIT_STEELS_TRUCKS TRAIT_SUPPLYSTORAGE_LARGE
+    }
+   }
+  }
+  SCR_PreviewEntityComponent "{E71279C8E4470619}" {
+   m_aEntries {
+    SCR_BasePreviewEntry "{2B6C89D79EDED9B0}" {
+     m_Mesh "{E825680C995E2599}Assets/Vehicles/Semitrailer/SST_Supply.xob"
+    }
+   }
+  }
+ }
+}
