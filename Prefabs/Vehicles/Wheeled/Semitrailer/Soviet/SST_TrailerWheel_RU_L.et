@@ -1,0 +1,17 @@
+GenericEntity : "{69FDF3B29064F40F}Prefabs/Vehicles/Wheeled/Ural4320/VehParts/Wheels/Ural4320_wheel_left_01.et" {
+ ID "D49AC8E1D0CC95EC"
+ components {
+  SST_TrailerWheelComponent "{ED65D1DF243B1D27}" {
+   m_fRadius 0.658
+  }
+  BaseFlattenGrassComponent "{8B1CEF9D4E3DEDFD}" {
+   ParametersCollection {
+    FlattenGrassParametersObject "{4D3BA0CDDBCF6CD3}" {
+     SizeX 0.5
+     SizeZ 1.2
+     Shape "Rect"
+    }
+   }
+  }
+ }
+}

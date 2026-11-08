@@ -122,11 +122,6 @@ class SST_TankerDamageManagerComponent : SCR_DamageManagerComponent
 
 			child = child.GetSibling();
 		}
-
-		// repaired: the original materials are back, a paint scheme (Soviet hubs) goes on again
-		SST_PaintSchemeComponent scheme = SST_PaintSchemeComponent.Cast(owner.FindComponent(SST_PaintSchemeComponent));
-		if (!wreck && scheme)
-			scheme.Apply();
 	}
 
 	//------------------------------------------------------------------------------------------------

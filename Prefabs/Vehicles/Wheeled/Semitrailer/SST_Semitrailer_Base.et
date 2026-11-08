@@ -105,9 +105,13 @@ GenericEntity {
      CONTENT_MODDED TRAIT_STEELS_TRUCKS
     }
     m_aAutoLabels {
-     ENTITYTYPE_SYSTEM THEME_MILITARY SIZE_L
+     FACTION_US ENTITYTYPE_SYSTEM THEME_MILITARY SIZE_L
     }
+    m_sFaction "US"
    }
+  }
+  SCR_FactionAffiliationComponent "{4B7AA934EEE7DAA6}" {
+   "faction affiliation" "US"
   }
   SCR_PreviewEntityComponent "{E71279C8E4470619}" : "{6CADA7A88A6265FD}Prefabs/Editor/Components/PreviewEntityComponentClass.ct" {
    m_bRuntime 0

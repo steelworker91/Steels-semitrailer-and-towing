@@ -1,0 +1,18 @@
+GenericEntity {
+ ID "6264DDC7F9829A81"
+ components {
+  ActionsManagerComponent "{6264DDC6685A5FCF}" {
+   additionalActions {
+    SST_LoadOnCarrierAction "{92BE618A762414E1}" {
+     ParentContextList {
+      "default"
+     }
+     UIInfo UIInfo "{4E32300DFF0E0207}" {
+      Name "Load wreck onto trailer"
+      Description "Puts this wreck on the deck of a nearby vehicle carrier semitrailer."
+     }
+    }
+   }
+  }
+ }
+}

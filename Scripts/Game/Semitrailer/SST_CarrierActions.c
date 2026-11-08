@@ -1,8 +1,10 @@
 // "Load onto trailer" sits on every vehicle (Vehicle_Base override) and shows up near a carrier
-// semitrailer. "Unload vehicle" sits at the ramps of the carrier.
+// semitrailer. On a wreck it sits on the vanilla salvage action entity (see SST_WreckLoad.c).
+// "Unload vehicle" sits at the ramps of the carrier.
 
 class SST_LoadOnCarrierAction : ScriptedUserAction
 {
+	protected IEntity m_Owner;
 	protected IEntity m_Vehicle;
 	protected SST_VehicleCarrierComponent m_Carrier;
 	protected string m_sReason;
@@ -10,7 +12,7 @@ class SST_LoadOnCarrierAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
-		m_Vehicle = pOwnerEntity;
+		m_Owner = pOwnerEntity;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -18,6 +20,12 @@ class SST_LoadOnCarrierAction : ScriptedUserAction
 	{
 		m_sReason = string.Empty;
 		m_Carrier = null;
+
+		// on the wreck action entity the vehicle is the parent
+		m_Vehicle = m_Owner;
+		if (m_Owner && !Vehicle.Cast(m_Owner))
+			m_Vehicle = m_Owner.GetParent();
+
 		if (!m_Vehicle || m_Vehicle.GetParent())
 			return;
 
@@ -47,7 +55,11 @@ class SST_LoadOnCarrierAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool GetActionNameScript(out string outName)
 	{
-		outName = "Load onto trailer";
+		if (m_Owner && !Vehicle.Cast(m_Owner))
+			outName = "Load wreck onto trailer";
+		else
+			outName = "Load onto trailer";
+
 		return true;
 	}
 

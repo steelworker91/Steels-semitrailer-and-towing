@@ -44,6 +44,7 @@ class SST_VehicleCarrierComponent : ScriptComponent
 	protected ref array<vector> m_aLocalPos = {};
 	protected ref array<float> m_aRearZ = {};
 	protected ref array<float> m_aMass = {};
+	protected ref array<bool> m_aWreck = {};
 
 	protected SST_SemiTrailerComponent m_Trailer;
 	protected vector m_vLastPos;
@@ -52,6 +53,8 @@ class SST_VehicleCarrierComponent : ScriptComponent
 	protected ref array<vector> m_aNodePos = {};
 
 	protected static ref array<SST_VehicleCarrierComponent> s_aCarriers = {};
+
+	protected static const float WRECK_SETTLE_TIME = 5000; // ms
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
@@ -153,8 +156,10 @@ class SST_VehicleCarrierComponent : ScriptComponent
 		if (!Vehicle.Cast(vehicle) || vehicle == owner || vehicle.GetParent())
 			return "Can't be loaded";
 
-		if (IsDestroyed(vehicle))
-			return "Vehicle is destroyed";
+		// wrecks can go on the deck too, once the wreck model is in (see SST_WreckTime.c)
+		bool wreck = IsDestroyed(vehicle);
+		if (wreck && !IsWreckSettled(vehicle))
+			return "Wreck is still settling";
 
 		if (DistanceToRamp(vehicle.GetOrigin()) > m_fLoadRange)
 			return "Too far from the trailer";
@@ -192,8 +197,13 @@ class SST_VehicleCarrierComponent : ScriptComponent
 		if (GetLoadedMass() + GetVehicleMass(vehicle) > m_fMaxMass)
 			return "Too heavy";
 
-		// origin on the deck, like the C-130 cargo bay: vehicle models have their origin at the ground
-		localPos = Vector(0, m_fDeckY, front - maxs[2]);
+		// origin on the deck, like the C-130 cargo bay: vehicle models have their origin at the ground.
+		// A wreck model has no wheels under it, its lowest point goes on the deck instead.
+		if (wreck)
+			localPos = Vector(-(mins[0] + maxs[0]) * 0.5, m_fDeckY - mins[1], front - maxs[2]);
+		else
+			localPos = Vector(0, m_fDeckY, front - maxs[2]);
+
 		return string.Empty;
 	}
 
@@ -217,20 +227,21 @@ class SST_VehicleCarrierComponent : ScriptComponent
 		float rearZ = localPos[2] + mins[2];
 		float mass = GetVehicleMass(vehicle);
 
-		DoLoad(rpl.Id(), localPos, rearZ, mass);
-		Rpc(RpcDo_Load, rpl.Id(), localPos, rearZ, mass);
+		bool wreck = IsDestroyed(vehicle);
+		DoLoad(rpl.Id(), localPos, rearZ, mass, wreck);
+		Rpc(RpcDo_Load, rpl.Id(), localPos, rearZ, mass, wreck);
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RpcDo_Load(RplId id, vector localPos, float rearZ, float mass)
+	protected void RpcDo_Load(RplId id, vector localPos, float rearZ, float mass, bool wreck)
 	{
-		DoLoad(id, localPos, rearZ, mass);
+		DoLoad(id, localPos, rearZ, mass, wreck);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void DoLoad(RplId id, vector localPos, float rearZ, float mass)
+	protected void DoLoad(RplId id, vector localPos, float rearZ, float mass, bool wreck)
 	{
 		if (m_aLoaded.Find(id) >= 0)
 			return;
@@ -239,6 +250,7 @@ class SST_VehicleCarrierComponent : ScriptComponent
 		m_aLocalPos.Insert(localPos);
 		m_aRearZ.Insert(rearZ);
 		m_aMass.Insert(mass);
+		m_aWreck.Insert(wreck);
 		Attach(id, localPos);
 	}
 
@@ -364,6 +376,7 @@ class SST_VehicleCarrierComponent : ScriptComponent
 		m_aLocalPos.Remove(slot);
 		m_aRearZ.Remove(slot);
 		m_aMass.Remove(slot);
+		m_aWreck.Remove(slot);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -445,8 +458,9 @@ class SST_VehicleCarrierComponent : ScriptComponent
 				continue;
 			}
 
-			// a wreck is not carried, it comes off the deck before the wreck model is swapped in
-			if (IsDestroyed(vehicle))
+			// destroyed while on the deck: it comes off before the wreck model is swapped in.
+			// Wrecks that were loaded as wrecks stay.
+			if (!m_aWreck[i] && IsDestroyed(vehicle))
 			{
 				if (server)
 				{
@@ -571,6 +585,15 @@ class SST_VehicleCarrierComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Vanilla swaps in the wreck model a moment after the explosion (and waits for players to get out
+	//! first), the vehicle must not be on the deck while that happens
+	protected static bool IsWreckSettled(IEntity vehicle)
+	{
+		SCR_VehicleDamageManagerComponent damage = SCR_VehicleDamageManagerComponent.Cast(vehicle.FindComponent(SCR_VehicleDamageManagerComponent));
+		return !damage || damage.SST_GetTimeSinceDestroyed() < 0 || damage.SST_GetTimeSinceDestroyed() > WRECK_SETTLE_TIME;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RpcDo_Drop(int slot)
 	{
@@ -588,6 +611,7 @@ class SST_VehicleCarrierComponent : ScriptComponent
 			writer.WriteVector(m_aLocalPos[i]);
 			writer.WriteFloat(m_aRearZ[i]);
 			writer.WriteFloat(m_aMass[i]);
+			writer.WriteBool(m_aWreck[i]);
 		}
 
 		return true;
@@ -605,7 +629,8 @@ class SST_VehicleCarrierComponent : ScriptComponent
 			RplId id;
 			vector localPos;
 			float rearZ, mass;
-			if (!reader.ReadRplId(id) || !reader.ReadVector(localPos) || !reader.ReadFloat(rearZ) || !reader.ReadFloat(mass))
+			bool wreck;
+			if (!reader.ReadRplId(id) || !reader.ReadVector(localPos) || !reader.ReadFloat(rearZ) || !reader.ReadFloat(mass) || !reader.ReadBool(wreck))
 				return false;
 
 			// attached in EOnFrame once the vehicle exists here
@@ -613,6 +638,7 @@ class SST_VehicleCarrierComponent : ScriptComponent
 			m_aLocalPos.Insert(localPos);
 			m_aRearZ.Insert(rearZ);
 			m_aMass.Insert(mass);
+			m_aWreck.Insert(wreck);
 		}
 
 		return true;

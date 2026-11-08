@@ -1,14 +1,50 @@
-GenericEntity : "{E2DF1CB5D1605899}Prefabs/Vehicles/Wheeled/Semitrailer/SST_Semitrailer_Tanker.et" {
- ID "B8A7C2BFBB154BD6"
+GenericEntity : "{5ECC57FA85989247}Prefabs/Vehicles/Wheeled/Semitrailer/Soviet/SST_Semitrailer_Base_RU.et" {
+ ID "ADAEA14A8CA45057"
  components {
   MeshObject "{680CF36337B35C97}" {
    Object "{DAFC60456FED5B57}Assets/Vehicles/Semitrailer/SST_Tanker_RU.xob"
   }
-  SST_PaintSchemeComponent "{B82D3E46CE12344D}" {
-   m_aSwaps {
-    SST_MaterialSwap "{DF302BC6B44876AA}" {
-     m_sSource "SST_WheelHubPaint"
-     m_sTarget "{B0B1E4609DD4BF43}Assets/Vehicles/Semitrailer/Soviet/SST_WheelHubPaint_RU.emat"
+  SST_SemiTrailerComponent "{36C70A973A6D5660}" {
+   m_fEmptyMass 7000
+   m_fCargoMass 6900
+   m_sCargoComponent "SCR_FuelManagerComponent"
+   m_sCargoGeom ""
+   m_vCargoCenter 0 1.25 -5.17
+   m_vCargoSize 2.7 1.58 10.95
+   m_sNoVehicleGeoms "UBX_frame UBX_tank UBX_tankbase"
+  }
+  SST_TankerDamageManagerComponent "{CF596DEE7BA0929F}" {
+   m_sWheelWreckMaterial "{86E1A6E6EA821CC0}Assets/Vehicles/Wheeled/Ural4320/Data/Ural_4320_Wheels_wreck.emat"
+   "Additional hit zones" {
+    SCR_DestructibleHitzone Hull {
+     HZDefault 1
+     MaxHealth 4000
+     DamageReduction 10
+     DamageThreshold 2
+     "Melee multiplier" 0.01
+     "Kinetic multiplier" 0.01
+     "Fragmentation multiplier" 0
+     "Explosive multiplier" 0.33
+     "Incendiary multiplier" 0.7
+     "DamageState threshold" {
+      0.7 0.4 0.2
+     }
+     m_pDestructionHandler SCR_DestructionBaseHandler "{794B3FE48B02A91B}" {
+      m_iWreckDelay 250
+      m_bAllowHideWreck 0
+     }
+     m_sDestructionParticle "{3528DFF4EE2BBD7C}Particles/Vehicle/Vehicle_explosion_medium_01.ptc"
+     m_vParticleOffset 0 1.4 -5.17
+    }
+   }
+   m_SecondaryExplosions SCR_SecondaryExplosions "{5257B95CC18B666B}" : "{314EA868954D2C3E}Configs/Damage/SST_SecondaryExplosions.conf" {
+   }
+  }
+  SlotManagerComponent "{5BA4CFE569FEC603}" {
+   Slots {
+    EntitySlotInfo FuelTank {
+     Offset 0 -0.707 0.49
+     Prefab "{8F3235828DCC2179}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TankerFuelSystem.et"
     }
    }
   }
@@ -16,8 +52,8 @@ GenericEntity : "{E2DF1CB5D1605899}Prefabs/Vehicles/Wheeled/Semitrailer/SST_Semi
    m_UIInfo SCR_EditableEntityUIInfo "{B617870A2457A987}" {
     Name "Fuel Tank Semitrailer (Soviet)"
     Description "Semitrailer with a lengthened fuel tank (11200 l) in the paint and markings of the vanilla Ural-4320 cistern. Refuels vehicles and jerrycans like the vanilla fuel truck. Back a tractor under the kingpin to couple it."
-    m_aAuthoredLabels + {
-     FACTION_USSR
+    m_aAuthoredLabels {
+     CONTENT_MODDED TRAIT_STEELS_TRUCKS TRAIT_REFUELING
     }
    }
   }
