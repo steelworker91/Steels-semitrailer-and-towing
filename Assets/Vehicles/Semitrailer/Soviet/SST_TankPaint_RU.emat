@@ -1,6 +1,0 @@
-MatPBRMulti : "{674D2E455DE4CDE0}Assets/Vehicles/Wheeled/Ural4320/Data/Ural_4320_Cistern.emat" {
- GlobalMCRMap "{8FEB4A18D7DAE32A}Assets/Vehicles/Semitrailer/Soviet/SST_RU_Tank_MCR.edds"
- MaskMap "{2746B0F37448F60E}Assets/Vehicles/Semitrailer/SST_Paint_MASK_Clean.edds"
- VFXMap "{F7FAC1679EA24613}Assets/Vehicles/Semitrailer/Soviet/SST_RU_Tank_VFX.edds"
- GlobalAOMap "{A04A835CDBC44919}Assets/Vehicles/Semitrailer/Soviet/SST_RU_Tank_AO.edds"
-}

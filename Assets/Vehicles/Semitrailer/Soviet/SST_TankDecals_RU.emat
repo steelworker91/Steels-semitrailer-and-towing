@@ -1,8 +1,0 @@
-MatPBRDecal : "{88DF902971C4E789}Assets/Vehicles/Wheeled/Ural4320/Data/Ural_4320_Cistern_TextDecals.emat" {
- GlobalMapsUVTransform MatUVTransform "{E863A3D33E5EFE20}" {
-  TilingU 1
-  TilingV 1
-  OffsetU 0
-  OffsetV 0
- }
-}
