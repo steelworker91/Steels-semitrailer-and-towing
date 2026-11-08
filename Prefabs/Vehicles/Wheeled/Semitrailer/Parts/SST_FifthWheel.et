@@ -1,0 +1,10 @@
+GenericEntity {
+ ID "2BB1CEE89518FB47"
+ components {
+  MeshObject "{60540AB314815F13}" {
+   Object "{983CB570E08BD30E}Assets/Vehicles/Semitrailer/SST_FifthWheel.xob"
+  }
+  Hierarchy "{42ADE4C73CC85AEE}" {
+  }
+ }
+}

@@ -1,0 +1,78 @@
+MetaFileClass {
+ Name "{A739F7093D6DE4A9}Assets/Vehicles/Semitrailer/SST_Semitrailer.xob"
+ Configurations {
+  FBXResourceClass PC {
+   MaterialAssigns {
+    MaterialAssignClass "{C34D11FCD868047E}" {
+     SourceMaterial "SST_SemitrailerPaint"
+     AssignedMaterial "{C310065FB6797185}Assets/Vehicles/Semitrailer/SST_SemitrailerPaint.emat"
+    }
+    MaterialAssignClass "{A667D7551B9FCBDD}" {
+     SourceMaterial "SST_Semitrailer"
+     AssignedMaterial "{309EBC6CDF9436EA}Assets/Vehicles/Semitrailer/SST_Semitrailer.emat"
+    }
+   }
+   MeshParams {
+    MeshParam SST_Semitrailer {
+    }
+   }
+   GeometryParams {
+    GeometryParam UBX_frame {
+     LayerPreset "VehicleFireView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_rear {
+     LayerPreset "VehicleFireView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_bogie {
+     LayerPreset "VehicleFireView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_cargo {
+     LayerPreset "VehicleFireView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_wheels {
+     LayerPreset "VehicleComplexView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_legL {
+     LayerPreset "VehicleComplexView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+    GeometryParam UBX_legR {
+     LayerPreset "VehicleComplexView"
+     SurfaceProperties {
+      "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+     }
+    }
+   }
+   ApplicationVendor "Blender Foundation"
+   ApplicationName "Blender (stable FBX IO)"
+   ApplicationVersion "5.0.0"
+  }
+  FBXResourceClass XBOX_ONE : PC {
+  }
+  FBXResourceClass XBOX_SERIES : PC {
+  }
+  FBXResourceClass PS4 : PC {
+  }
+  FBXResourceClass PS5 : PC {
+  }
+  FBXResourceClass HEADLESS : PC {
+  }
+ }
+}

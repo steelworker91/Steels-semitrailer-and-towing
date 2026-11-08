@@ -1,0 +1,5 @@
+MatPBRBasic {
+ SurfaceProperties "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+ BCRMap "{06F10328A0A7DC54}Assets/Vehicles/Semitrailer/SST_Semitrailer_BCR.edds"
+ NMOMap "{8B9BA55A66BE4F2C}Assets/Vehicles/Semitrailer/SST_Semitrailer_NMO.edds"
+}

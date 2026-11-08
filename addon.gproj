@@ -1,0 +1,8 @@
+GameProject {
+ ID "Steelssemitrailerandtowing"
+ GUID "6ACF29CF396C1940"
+ TITLE "Steels semitrailer and towing"
+ Dependencies {
+  "58D0FB3206B6F859"
+ }
+}

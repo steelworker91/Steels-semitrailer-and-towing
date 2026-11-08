@@ -1,0 +1,34 @@
+MetaFileClass {
+ Name "{CB4CF2AB2709B09B}Assets/Vehicles/Semitrailer/SST_WheelHub.xob"
+ Configurations {
+  FBXResourceClass PC {
+   MaterialAssigns {
+    MaterialAssignClass "{A4B49CCC41AB76E0}" {
+     SourceMaterial "SST_WheelHubPaint"
+     AssignedMaterial "{64118FF020EEB3F8}Assets/Vehicles/Semitrailer/SST_WheelHubPaint.emat"
+    }
+    MaterialAssignClass "{6182A3A6430552FE}" {
+     SourceMaterial "SST_WheelHub"
+     AssignedMaterial "{450E77E61FBF21A5}Assets/Vehicles/Semitrailer/SST_WheelHub.emat"
+    }
+   }
+   MeshParams {
+    MeshParam SST_WheelHub {
+    }
+   }
+   ApplicationVendor "Blender Foundation"
+   ApplicationName "Blender (stable FBX IO)"
+   ApplicationVersion "5.0.0"
+  }
+  FBXResourceClass XBOX_ONE : PC {
+  }
+  FBXResourceClass XBOX_SERIES : PC {
+  }
+  FBXResourceClass PS4 : PC {
+  }
+  FBXResourceClass PS5 : PC {
+  }
+  FBXResourceClass HEADLESS : PC {
+  }
+ }
+}

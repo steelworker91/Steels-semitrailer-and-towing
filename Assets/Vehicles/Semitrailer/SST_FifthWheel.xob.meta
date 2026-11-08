@@ -1,0 +1,34 @@
+MetaFileClass {
+ Name "{983CB570E08BD30E}Assets/Vehicles/Semitrailer/SST_FifthWheel.xob"
+ Configurations {
+  FBXResourceClass PC {
+   MaterialAssigns {
+    MaterialAssignClass "{F02FC1B2DB242718}" {
+     SourceMaterial "SST_FifthWheelPaint"
+     AssignedMaterial "{F5E28CD71AEDFC13}Assets/Vehicles/Semitrailer/SST_FifthWheelPaint.emat"
+    }
+    MaterialAssignClass "{7723EFA6779CA1C1}" {
+     SourceMaterial "SST_FifthWheel"
+     AssignedMaterial "{A2FB864F7C975CB9}Assets/Vehicles/Semitrailer/SST_FifthWheel.emat"
+    }
+   }
+   MeshParams {
+    MeshParam ABCCC_FifthWheel {
+    }
+   }
+   ApplicationVendor "Blender Foundation"
+   ApplicationName "Blender (stable FBX IO)"
+   ApplicationVersion "5.0.0"
+  }
+  FBXResourceClass XBOX_ONE : PC {
+  }
+  FBXResourceClass XBOX_SERIES : PC {
+  }
+  FBXResourceClass PS4 : PC {
+  }
+  FBXResourceClass PS5 : PC {
+  }
+  FBXResourceClass HEADLESS : PC {
+  }
+ }
+}

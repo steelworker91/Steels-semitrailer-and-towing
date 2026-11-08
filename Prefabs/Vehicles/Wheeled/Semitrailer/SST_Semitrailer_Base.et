@@ -1,0 +1,161 @@
+GenericEntity {
+ ID "3D49EACC84F5FE07"
+ components {
+  MeshObject "{680CF36337B35C97}" {
+   Object "{A739F7093D6DE4A9}Assets/Vehicles/Semitrailer/SST_Semitrailer.xob"
+  }
+  SST_SemiTrailerComponent "{36C70A973A6D5660}" {
+  }
+  SlotManagerComponent "{5BA4CFE569FEC603}" {
+   Slots {
+    EntitySlotInfo Cargo {
+     Offset 0 0.5 -4.933
+    }
+   }
+  }
+  BaseLightManagerComponent "{ACB15A5A00E935D7}" {
+   LightsEnabled 1
+   LightSlots {
+    SCR_LightSlot "{6E12075DC82794EB}" : "{88DADCB91DCE5E4A}Prefabs/Vehicles/Core/Lights/Light_Rear.conf" {
+     LightPositionInfo EntitySlotInfo "{9FF7033002595501}" {
+      Offset -1.0 0.3 -11.12
+      Angles 0 180 0
+     }
+     ParentSurface "LBreaklight"
+    }
+    SCR_LightSlot "{283463B627AE3094}" : "{88DADCB91DCE5E4A}Prefabs/Vehicles/Core/Lights/Light_Rear.conf" {
+     LightPositionInfo EntitySlotInfo "{86984B5B0DA5201A}" {
+      Offset 1.0 0.3 -11.12
+      Angles 0 180 0
+     }
+     ParentSurface "RBreaklight"
+    }
+    SCR_LightSlot "{158431228251BAA4}" : "{3F796555FD10152A}Prefabs/Vehicles/Core/Lights/Light_Brake.conf" {
+     LightPositionInfo EntitySlotInfo "{4D7E5F1392573C8A}" {
+      Offset -1.0 0.3 -11.12
+      Angles 0 180 0
+     }
+     ParentSurface "LBreaklight"
+    }
+    SCR_LightSlot "{12A1E47A5D9DEE9B}" : "{3F796555FD10152A}Prefabs/Vehicles/Core/Lights/Light_Brake.conf" {
+     LightPositionInfo EntitySlotInfo "{CE20242990EF1DC8}" {
+      Offset 1.0 0.3 -11.12
+      Angles 0 180 0
+     }
+     ParentSurface "RBreaklight"
+    }
+    SCR_LightSlot "{2E014FD99DB652A0}" : "{2F2322478D3C2660}Prefabs/Vehicles/Core/Lights/Light_HazardLeft.conf" {
+     LightPositionInfo EntitySlotInfo "{9E483786D90577CA}" {
+      Offset -1.0 0.3 -11.12
+      Angles 0 180 0
+     }
+     LightPrefab "{241F2057968E1612}Prefabs/Vehicles/Core/Lights/VehicleLight_Hazard_Combilight_Red.et"
+     ParentSurface "LBreaklight"
+    }
+    SCR_LightSlot "{056459582E5ACD93}" : "{40762EC709F75183}Prefabs/Vehicles/Core/Lights/Light_HazardRight.conf" {
+     LightPositionInfo EntitySlotInfo "{8CFFF42E709AE564}" {
+      Offset 1.0 0.3 -11.12
+      Angles 0 180 0
+     }
+     LightPrefab "{241F2057968E1612}Prefabs/Vehicles/Core/Lights/VehicleLight_Hazard_Combilight_Red.et"
+     ParentSurface "RBreaklight"
+    }
+   }
+   EmissiveSurfaceSlots {
+    SCR_EmissiveLightSurfaceSlot LBreaklight : "{0B8CAB3404576928}Prefabs/Vehicles/Core/EmissiveSurfaces/EmissiveSurface_Tail_CombiLight.conf" {
+     Offset -0.1617 -1.0401 -6.6772
+     Prefab "{1FD53A767E79AB2D}Prefabs/Vehicles/Wheeled/M923A1/Lights/LBrakelight_M923_Cargo_ES.et"
+     LightSide 0
+    }
+    SCR_EmissiveLightSurfaceSlot RBreaklight : "{0B8CAB3404576928}Prefabs/Vehicles/Core/EmissiveSurfaces/EmissiveSurface_Tail_CombiLight.conf" {
+     Offset 0.1617 -1.0401 -6.6772
+     Prefab "{D9E2CCC57B1791F5}Prefabs/Vehicles/Wheeled/M923A1/Lights/RBrakelight_M923_Cargo_ES.et"
+     LightSide 1
+    }
+   }
+  }
+  ActionsManagerComponent "{FDCA8E4B2ABB70F1}" {
+   ActionContexts {
+    UserActionContext "{F958787FAE3C5F40}" {
+     ContextName "coupling"
+     Position PointInfo "{2089864C630750A8}" {
+      Offset -1.35 -0.3 -1.6
+     }
+     Radius 1.8
+    }
+   }
+   additionalActions {
+    SST_TrailerCouplingAction "{99A026D61C0BDD2A}" {
+     ParentContextList {
+      "coupling"
+     }
+     UIInfo UIInfo "{041B8998325C1A21}" {
+      Name "Couple / uncouple trailer"
+     }
+    }
+   }
+  }
+  SCR_EditableSystemComponent "{31405F20CDCBCC5E}" : "{996046FE206C699A}Prefabs/Editor/Components/Default_SCR_EditableEntityComponent.ct" {
+   m_vIconPos 0 0.5 -5
+   m_EntityType SYSTEM
+   m_UIInfo SCR_EditableEntityUIInfo "{B617870A2457A987}" {
+    Name "Semitrailer"
+    Description "Flatbed semitrailer. Back a tractor under the kingpin to couple it, uncouple it at the front left of the trailer."
+    m_aAuthoredLabels {
+     CONTENT_MODDED TRAIT_STEELS_TRUCKS
+    }
+    m_aAutoLabels {
+     ENTITYTYPE_SYSTEM THEME_MILITARY SIZE_L
+    }
+   }
+  }
+  SCR_PreviewEntityComponent "{E71279C8E4470619}" : "{6CADA7A88A6265FD}Prefabs/Editor/Components/PreviewEntityComponentClass.ct" {
+   m_bRuntime 0
+   m_aEntries {
+    SCR_BasePreviewEntry "{2B6C89D79EDED9B0}" {
+     m_iParentID -1
+     m_Mesh "{A739F7093D6DE4A9}Assets/Vehicles/Semitrailer/SST_Semitrailer.xob"
+     m_Flags 0
+     m_Shape MESH
+     m_iPivotID ""
+     m_vScale 1 1 1
+     m_vPosition 0 1.2 0
+     m_vAngles 0 0 0
+    }
+   }
+  }
+  RigidBody "{A07E8070619D32B5}" {
+   Mass 7000
+   CenterOfMass 0 0.25 -5.4
+   LinearSleepingThreashold 0.2
+   AngularSleepingThreashold 0.2
+   ModelGeometry 1
+   SimState Collision
+   Static 0
+  }
+  RplComponent "{B9775BCD4F580E50}" {
+  }
+  Hierarchy "{E4FE6700913D6523}" {
+  }
+ }
+ {
+  GenericEntity : "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et" {
+   ID "7BA1AD9FA2476D17"
+   coords 0.915 -0.600 -8.925
+  }
+  GenericEntity : "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et" {
+   ID "4E257C88ADD45F42"
+   coords -0.915 -0.600 -8.925
+   angleY 180
+  }
+  GenericEntity : "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et" {
+   ID "CAD14862C7ED6A3F"
+   coords 0.915 -0.600 -10.275
+  }
+  GenericEntity : "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et" {
+   ID "1E7C79C41BE427F9"
+   coords -0.915 -0.600 -10.275
+   angleY 180
+  }
+ }
+}

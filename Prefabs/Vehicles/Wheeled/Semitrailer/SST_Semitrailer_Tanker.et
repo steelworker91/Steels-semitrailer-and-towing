@@ -1,0 +1,67 @@
+GenericEntity : "{C174CBB6F089C2EB}Prefabs/Vehicles/Wheeled/Semitrailer/SST_Semitrailer_Base.et" {
+ ID "38FC81B7F6F9F168"
+ components {
+  MeshObject "{680CF36337B35C97}" {
+   Object "{DF238C35026641B9}Assets/Vehicles/Semitrailer/SST_Tanker.xob"
+  }
+  SST_SemiTrailerComponent "{36C70A973A6D5660}" {
+   m_fEmptyMass 7000
+   m_fCargoMass 6900
+   m_sCargoComponent "SCR_FuelManagerComponent"
+   m_sCargoGeom ""
+   m_vCargoCenter 0 1.25 -5.17
+   m_vCargoSize 2.7 1.58 10.95
+   m_sNoVehicleGeoms "UBX_frame UBX_tank UBX_tankbase"
+  }
+  SST_TankerDamageManagerComponent "{CF596DEE7BA0929F}" {
+   "Additional hit zones" {
+    SCR_DestructibleHitzone Hull {
+     HZDefault 1
+     MaxHealth 4000
+     DamageReduction 10
+     DamageThreshold 2
+     "Melee multiplier" 0.01
+     "Kinetic multiplier" 0.01
+     "Fragmentation multiplier" 0
+     "Explosive multiplier" 0.33
+     "Incendiary multiplier" 0.7
+     "DamageState threshold" {
+      0.7 0.4 0.2
+     }
+     m_pDestructionHandler SCR_DestructionBaseHandler "{794B3FE48B02A91B}" {
+      m_iWreckDelay 250
+      m_bAllowHideWreck 0
+     }
+     m_sDestructionParticle "{3528DFF4EE2BBD7C}Particles/Vehicle/Vehicle_explosion_medium_01.ptc"
+     m_vParticleOffset 0 1.4 -5.17
+    }
+   }
+   m_SecondaryExplosions SCR_SecondaryExplosions "{5257B95CC18B666B}" : "{314EA868954D2C3E}Configs/Damage/SST_SecondaryExplosions.conf" {
+   }
+  }
+  SlotManagerComponent "{5BA4CFE569FEC603}" {
+   Slots {
+    EntitySlotInfo FuelTank {
+     Offset 0 -0.707 0.49
+     Prefab "{8F3235828DCC2179}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TankerFuelSystem.et"
+    }
+   }
+  }
+  SCR_EditableSystemComponent "{31405F20CDCBCC5E}" {
+   m_UIInfo SCR_EditableEntityUIInfo "{B617870A2457A987}" {
+    Name "Fuel Tank Semitrailer"
+    Description "Semitrailer with a lengthened M923A1 fuel tank (11200 l). Refuels vehicles and jerrycans like the vanilla fuel truck. Back a tractor under the kingpin to couple it."
+    m_aAuthoredLabels {
+     CONTENT_MODDED TRAIT_STEELS_TRUCKS TRAIT_REFUELING
+    }
+   }
+  }
+  SCR_PreviewEntityComponent "{E71279C8E4470619}" {
+   m_aEntries {
+    SCR_BasePreviewEntry "{2B6C89D79EDED9B0}" {
+     m_Mesh "{DF238C35026641B9}Assets/Vehicles/Semitrailer/SST_Tanker.xob"
+    }
+   }
+  }
+ }
+}

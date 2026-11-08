@@ -1,0 +1,74 @@
+GenericEntity : "{57F0F8355127D262}Prefabs/Vehicles/Wheeled/M923A1/VehParts/M923A1_fuel_tank.et" {
+ ID "DF3C86D9F38D7830"
+ components {
+  BaseLightManagerComponent "{585AF5F1DBDA0215}" {
+   Enabled 0
+  }
+  MeshObject "{4B42E716914465B9}" {
+   Enabled 0
+  }
+  RigidBody "{4B42E71692C2FB79}" {
+   Enabled 0
+  }
+  SCR_DamageManagerComponent "{3EBB276D48AFFF41}" {
+   "Additional hit zones" {
+    SCR_FuelHitZone FuelCargo {
+     m_SecondaryExplosionPoint PointInfo "{5E6D5DC003149B8A}" {
+      PivotID ""
+      Offset 0 2.04 -5.66
+     }
+     m_pDestructionHandler SCR_DestructionBaseHandler "{5584C42CE92F5B52}" {
+      m_sWreckModel ""
+     }
+    }
+   }
+  }
+  SCR_FuelManagerComponent "{5624AEE53C44BEBA}" {
+   FuelNodes {
+    SCR_FuelNode "{5624AEE534FA6946}" {
+     MaxFuel 11200
+     FuelCapPosition EntitySlotInfo "{566C70623B92CA1C}" {
+      Offset 0 2.72 -9.21
+     }
+     m_fInitialFuelTankState 11200
+    }
+   }
+  }
+  SCR_FuelSupportStationComponent "{5E1CF6319D27700F}" {
+   m_fRange 12
+   m_vOffset 0 0 -1.9
+   m_eFactionUsageCheck 0
+  }
+  SlotManagerComponent "{56CA76D6093408D7}" {
+   Slots {
+    InventoryStorageSlot nozzle {
+     Offset 0.0299 1.6068 -11.265
+    }
+   }
+  }
+  ActionsManagerComponent "{5104C985875F00FA}" {
+   ActionContexts {
+    UserActionContext "{51D496E460D623B0}" {
+     Position PointInfo "{51D496E58BF15271}" {
+      Offset 0 2.72 -7.56
+     }
+    }
+    UserActionContext "{51D496E5D702F86D}" {
+     Position PointInfo "{51D496E5CA7C6346}" {
+      Offset 0 2.72 -9.21
+     }
+    }
+    UserActionContext "{51D496E467A77B1F}" {
+     Position PointInfo "{51D496E58AE1886F}" {
+      Offset -1.25 2.15 -9.46
+     }
+    }
+    UserActionContext "{5DC683822A274392}" {
+     Position PointInfo "{5DC6838224A6B5D2}" {
+      Offset 0 1.7292 -11.3227
+     }
+    }
+   }
+  }
+ }
+}

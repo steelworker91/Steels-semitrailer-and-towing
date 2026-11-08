@@ -1,0 +1,18 @@
+GenericEntity : "{8BC4C95E01FC9BD3}Prefabs/Weapons/Warheads/Explosions/Explosion_Fuel_Large.et" {
+ ID "9FCFD4E3FCE419A0"
+ components {
+  TimerTriggerComponent "{55129E81CBAA1390}" {
+   PROJECTILE_EFFECTS {
+    ExplosionDamageContainer "{5D8D1EB3E2893B43}" {
+     ChargeWeight 492000
+    }
+    SpawnDecalEffect "{5E24A9E4AE3FCD64}" {
+     Scale 13.5
+    }
+    SpawnParticleEffect "{80A14EC9074DE6C6}" {
+     ParticleEffect "{79ED2EDBC38185AB}Particles/Logistics/Explosion/TNT/Explosion_TNT_Large.ptc"
+    }
+   }
+  }
+ }
+}

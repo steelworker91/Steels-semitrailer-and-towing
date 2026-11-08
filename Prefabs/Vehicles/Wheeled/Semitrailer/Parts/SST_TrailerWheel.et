@@ -1,0 +1,32 @@
+GenericEntity : "{5A9FC4436FEDB824}Prefabs/Vehicles/Wheeled/M923A1/VehParts/Wheels/M923A1_wheel_base.et" {
+ ID "2613AA37EE0A126B"
+ components {
+  MeshObject "{4B42E716914465B9}" {
+   Object "{FE848F530B59F5FB}Assets/Vehicles/Wheeled/M923A1/VehParts/Wheels/M923A1_rear_wheel.xob"
+  }
+  SST_TrailerWheelComponent "{E6A0EBCC122FC0F5}" {
+   m_fRadius 0.598
+  }
+  BaseFlattenGrassComponent "{8B1CEF9D4E3DEDFD}" {
+   ParametersCollection {
+    FlattenGrassParametersObject "{4D3BA0CDDBCF6CD3}" {
+     SizeX 0.45
+     SizeZ 1.1
+     Shape "Rect"
+    }
+   }
+  }
+ }
+ {
+  GenericEntity {
+   ID "33CA78170CA22161"
+   components {
+    MeshObject "{AC142861CA62A6A8}" {
+     Object "{CB4CF2AB2709B09B}Assets/Vehicles/Semitrailer/SST_WheelHub.xob"
+    }
+    Hierarchy "{817DE93571A9D01E}" {
+    }
+   }
+  }
+ }
+}

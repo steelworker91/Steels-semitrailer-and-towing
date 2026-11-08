@@ -1,0 +1,17 @@
+MetaFileClass {
+ Name "{CF8D06387A4E6CB0}Prefabs/Vehicles/Wheeled/Semitrailer/SST_Semitrailer_Carrier.et"
+ Configurations {
+  EntityTemplateResourceClass PC {
+  }
+  EntityTemplateResourceClass XBOX_ONE : PC {
+  }
+  EntityTemplateResourceClass XBOX_SERIES : PC {
+  }
+  EntityTemplateResourceClass PS4 : PC {
+  }
+  EntityTemplateResourceClass PS5 : PC {
+  }
+  EntityTemplateResourceClass HEADLESS : PC {
+  }
+ }
+}

@@ -1,0 +1,17 @@
+MetaFileClass {
+ Name "{64118FF020EEB3F8}Assets/Vehicles/Semitrailer/SST_WheelHubPaint.emat"
+ Configurations {
+  EMATResourceClass PC {
+  }
+  EMATResourceClass XBOX_ONE : PC {
+  }
+  EMATResourceClass XBOX_SERIES : PC {
+  }
+  EMATResourceClass PS4 : PC {
+  }
+  EMATResourceClass PS5 : PC {
+  }
+  EMATResourceClass HEADLESS : PC {
+  }
+ }
+}

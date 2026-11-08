@@ -1,0 +1,19 @@
+Vehicle {
+ ID "BBCBA43A9778AE21"
+ components {
+  ActionsManagerComponent "{C97BE5489221AE18}" {
+   additionalActions {
+    SST_LoadOnCarrierAction "{67303CB1B8D28169}" {
+     ParentContextList {
+      "push_front" "hood_repair" "heli_repair_point"
+     }
+     UIInfo UIInfo "{C74932B40BB02F96}" {
+      Name "Load onto trailer"
+      Description "Puts this vehicle on the deck of a nearby vehicle carrier semitrailer."
+     }
+     "Sort Priority" -98
+    }
+   }
+  }
+ }
+}
