@@ -53,6 +53,9 @@ class SST_SemiTrailerComponent : ScriptComponent
 	[Attribute("0.665 -1.09 -2", UIWidgets.Coords, "Foot of the right landing leg, trailer space (left one is mirrored)", category: "Parking")]
 	protected vector m_vLegFoot;
 
+	[Attribute("0", UIWidgets.CheckBox, "Drawbar trailer (dolly): the origin is the drawbar eye, couples to a tow hitch instead of a fifth wheel", category: "Coupling")]
+	protected bool m_bDrawbar;
+
 	[Attribute(desc: "Points of the body that must not go into the ground, trailer space. Empty: the ones of the flatbed semitrailer", category: "Suspension")]
 	protected ref array<vector> m_aGroundPoints;
 
@@ -120,6 +123,7 @@ class SST_SemiTrailerComponent : ScriptComponent
 
 	protected static IEntity s_TraceSelf;
 	protected static IEntity s_TraceTractor;
+	protected static IEntity s_TraceTowed;
 	protected static ref array<SST_SemiTrailerComponent> s_aTrailers = {};
 
 	static const float NO_GROUND = -1000000;
@@ -388,6 +392,7 @@ class SST_SemiTrailerComponent : ScriptComponent
 		param.LayerMask = EPhysicsLayerDefs.VehicleCast;
 
 		s_TraceSelf = owner;
+		s_TraceTowed = GetTowedTrailer();
 		float frac = owner.GetWorld().TraceMove(param, ParkFilter);
 		if (frac >= 1)
 			return NO_GROUND;
@@ -396,11 +401,11 @@ class SST_SemiTrailerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Ground only: the tractor may still stand under the legs
+	//! Ground only: the tractor may still stand under the legs, a dolly has its trailer on top
 	protected static bool ParkFilter(notnull IEntity e)
 	{
 		IEntity root = e.GetRootParent();
-		if (root == s_TraceSelf)
+		if (root == s_TraceSelf || (s_TraceTowed && root == s_TraceTowed))
 			return false;
 
 		return !ChimeraCharacter.Cast(root) && !Vehicle.Cast(root);
@@ -425,6 +430,23 @@ class SST_SemiTrailerComponent : ScriptComponent
 	IEntity GetTractor()
 	{
 		return m_Tractor;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool HasDrawbar()
+	{
+		return m_bDrawbar;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Road train: the trailer this one tows with its own hitch or fifth wheel
+	IEntity GetTowedTrailer()
+	{
+		SST_SemiTractorComponent hitch = SST_SemiTractorComponent.Cast(GetOwner().FindComponent(SST_SemiTractorComponent));
+		if (!hitch)
+			return null;
+
+		return hitch.GetTrailer();
 	}
 
 	//------------------------------------------------------------------------------------------------

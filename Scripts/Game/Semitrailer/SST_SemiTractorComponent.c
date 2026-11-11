@@ -12,6 +12,11 @@
 // Coupling works like on a real fifth wheel: back the tractor under a parked trailer and the jaws
 // lock once the kingpin is on the plate. Uncoupling is done at the trailer (user action), the trailer
 // then stays standing on its landing legs. Coupling/uncoupling is decided by the server.
+//
+// Road trains: a trailer can have this component too. With m_bTowHitch it is a tow hitch at the rear
+// that takes a drawbar trailer (dolly), the dolly has it as its fifth wheel. A towed trailer does not
+// move its own trailer in its frame event, the tractor in front does that right after it moved it,
+// so the whole train is posed in order every frame.
 
 [ComponentEditorProps(category: "SST/Semitrailer", description: "Tractor, spawns and tows a semitrailer")]
 class SST_SemiTractorComponentClass : ScriptGameComponentClass
@@ -41,6 +46,12 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	[Attribute("1.5", UIWidgets.EditBox, "Max tractor speed for coupling and uncoupling [m/s]", category: "Coupling")]
 	protected float m_fCoupleSpeed;
 
+	[Attribute("0", UIWidgets.CheckBox, "Tow hitch instead of a fifth wheel: only drawbar trailers (dolly) couple here", category: "Coupling")]
+	protected bool m_bTowHitch;
+
+	[Attribute("0", UIWidgets.EditBox, "Coupling by hand (user action) works up to this distance, 0 = what the action allows [m]", category: "Coupling")]
+	protected float m_fHandCoupleRadius;
+
 	[RplProp(onRplName: "OnTrailerChanged")]
 	protected RplId m_TrailerId;
 
@@ -54,6 +65,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	protected RplComponent m_Rpl;
 	protected SST_SemiTrailerComponent m_TrailerComp;
 	protected BaseLightManagerComponent m_Lights;
+	protected IEntity m_LightsOwner;
 	protected float m_fLightTimer;
 	protected float m_fSendTimer;
 
@@ -80,8 +92,10 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 	protected static IEntity s_TraceTractor;
 	protected static IEntity s_TraceTrailer;
+	protected static IEntity s_TraceTowed;
 	protected static ref array<SST_SemiTractorComponent> s_aTractors = {};
 
+	static const int MAX_CHAIN = 8;
 	static const float LIGHT_INTERVAL = 0.1;
 	static const float SEND_INTERVAL = 0.05;
 	static const float MAX_STEP = 0.004;
@@ -168,7 +182,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 		SST_SemiTrailerComponent comp = SST_SemiTrailerComponent.Cast(trailer.FindComponent(SST_SemiTrailerComponent));
 		RplComponent rpl = RplComponent.Cast(trailer.FindComponent(RplComponent));
-		if (!comp || !rpl || comp.GetTractor() || comp.IsWrecked())
+		if (!comp || !rpl || comp.GetTractor() || comp.IsWrecked() || !CanTow(trailer))
 			return false;
 
 		IEntity owner = GetOwner();
@@ -229,13 +243,69 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! The vehicle at the front of the train this entity is in (the entity itself when nothing tows it)
+	static IEntity GetChainHead(IEntity entity)
+	{
+		for (int i = 0; i < MAX_CHAIN && entity; i++)
+		{
+			SST_SemiTrailerComponent trailer = SST_SemiTrailerComponent.Cast(entity.FindComponent(SST_SemiTrailerComponent));
+			if (!trailer || !trailer.GetTractor())
+				return entity;
+
+			entity = trailer.GetTractor();
+		}
+
+		return entity;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Is the owner a trailer that something tows right now
+	protected bool IsTowed(IEntity owner)
+	{
+		SST_SemiTrailerComponent trailer = SST_SemiTrailerComponent.Cast(owner.FindComponent(SST_SemiTrailerComponent));
+		return trailer && trailer.GetTractor() != null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Fifth wheel takes semitrailers, a tow hitch takes drawbar trailers. Never ourselves or a
+	//! trailer that is part of the train in front of us.
+	bool CanTow(IEntity trailer)
+	{
+		IEntity owner = GetOwner();
+		SST_SemiTrailerComponent comp = SST_SemiTrailerComponent.Cast(trailer.FindComponent(SST_SemiTrailerComponent));
+		if (!comp || trailer == owner || comp.HasDrawbar() != m_bTowHitch)
+			return false;
+
+		IEntity entity = owner;
+		for (int i = 0; i < MAX_CHAIN && entity; i++)
+		{
+			SST_SemiTrailerComponent towed = SST_SemiTrailerComponent.Cast(entity.FindComponent(SST_SemiTrailerComponent));
+			if (!towed)
+				break;
+
+			entity = towed.GetTractor();
+			if (entity == trailer)
+				return false;
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! A trailer has no moving physics of its own, the head of the train has the speed
 	float GetSpeed()
 	{
-		Physics phys = GetOwner().GetPhysics();
+		Physics phys = GetChainHead(GetOwner()).GetPhysics();
 		if (!phys)
 			return 0;
 
 		return phys.GetVelocity().Length();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetHandCoupleRadius()
+	{
+		return m_fHandCoupleRadius;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -248,6 +318,9 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	//! Is the kingpin of this trailer on (or close to) our fifth wheel
 	bool IsInCouplingRange(IEntity trailer, float radius)
 	{
+		if (!CanTow(trailer))
+			return false;
+
 		IEntity owner = GetOwner();
 		vector plate = owner.CoordToParent(m_vFifthWheel);
 		vector kingpin = trailer.GetOrigin();
@@ -269,12 +342,12 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Free tractor with its fifth wheel under the kingpin of the given trailer
+	//! Free tractor with its fifth wheel under the kingpin of the given trailer (by hand)
 	static SST_SemiTractorComponent FindTractorFor(IEntity trailer, float radius)
 	{
 		foreach (SST_SemiTractorComponent tractor : s_aTractors)
 		{
-			if (tractor && !tractor.GetTrailer() && tractor.IsInCouplingRange(trailer, radius))
+			if (tractor && !tractor.GetTrailer() && tractor.IsInCouplingRange(trailer, Math.Max(radius, tractor.GetHandCoupleRadius())))
 				return tractor;
 		}
 
@@ -341,6 +414,31 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
+		// moved by the tractor in front, which updates us right after that
+		if (IsTowed(owner))
+			return;
+
+		UpdateTrain(owner, timeSlice, 0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Move our trailer, then let it move its own one
+	protected void UpdateTrain(IEntity owner, float timeSlice, int depth)
+	{
+		Tow(owner, timeSlice);
+
+		IEntity trailer = GetTrailer();
+		if (!trailer || depth >= MAX_CHAIN)
+			return;
+
+		SST_SemiTractorComponent next = SST_SemiTractorComponent.Cast(trailer.FindComponent(SST_SemiTractorComponent));
+		if (next)
+			next.UpdateTrain(trailer, timeSlice, depth + 1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void Tow(IEntity owner, float timeSlice)
+	{
 		IEntity trailer = GetTrailer();
 		if (!trailer)
 		{
@@ -359,19 +457,28 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 		m_TrailerComp.SetTractor(owner);
 
+		// in a road train every trailer takes the lights of the vehicle at the front
 		m_fLightTimer += timeSlice;
 		if (m_fLightTimer >= LIGHT_INTERVAL)
 		{
 			m_fLightTimer = 0;
-			if (!m_Lights)
-				m_Lights = BaseLightManagerComponent.Cast(owner.FindComponent(BaseLightManagerComponent));
+			IEntity head = GetChainHead(owner);
+			if (head != m_LightsOwner)
+			{
+				m_LightsOwner = head;
+				m_Lights = BaseLightManagerComponent.Cast(head.FindComponent(BaseLightManagerComponent));
+			}
 
-			m_TrailerComp.SyncLights(owner, m_Lights);
+			m_TrailerComp.SyncLights(head, m_Lights);
 		}
 
+		// A trailer that tows (road train) runs the simulation of its own trailer on every machine. Taking
+		// the pose relative to it from the network would carry every pitch of the trailer in front rigidly
+		// to the rear: a bump at the front lifts the end of a long train by metres.
 		bool isOwner = IsOwner();
-		m_TrailerComp.SetSimulated(isOwner);
-		if (!isOwner)
+		bool simulate = isOwner || owner.FindComponent(SST_SemiTrailerComponent) != null;
+		m_TrailerComp.SetSimulated(simulate);
+		if (!simulate)
 		{
 			m_bHasState = false;
 			FollowRelativePose(owner, trailer, timeSlice);
@@ -396,6 +503,8 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		}
 
 		ApplyPose(owner, trailer);
+		if (!isOwner)
+			return;
 
 		m_fSendTimer += timeSlice;
 		if (m_fSendTimer < SEND_INTERVAL)
@@ -727,6 +836,9 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 		s_TraceTractor = tractor;
 		s_TraceTrailer = trailer;
+		s_TraceTowed = null;
+		if (m_TrailerComp)
+			s_TraceTowed = m_TrailerComp.GetTowedTrailer();
 		BaseWorld world = tractor.GetWorld();
 		float frac = world.TraceMove(param, TraceFilter);
 		if (frac >= 1)
@@ -744,8 +856,9 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	protected static bool TraceFilter(notnull IEntity e)
 	{
+		// the dolly (or trailer) our trailer tows sits right behind it, under its rear end
 		IEntity root = e.GetRootParent();
-		if (root == s_TraceTractor || root == s_TraceTrailer)
+		if (root == s_TraceTractor || root == s_TraceTrailer || (s_TraceTowed && root == s_TraceTowed))
 			return false;
 
 		return !ChimeraCharacter.Cast(root);
