@@ -1,0 +1,30 @@
+MetaFileClass {
+ Name "{F12A1951DD9203B5}Assets/Vehicles/Semitrailer/SST_TowHitch.xob"
+ Configurations {
+  FBXResourceClass PC {
+   MaterialAssigns {
+    MaterialAssignClass "{0F6FD0AABF09095B}" {
+     SourceMaterial "SST_TowHitch"
+     AssignedMaterial "{6CC99930CEBB2F85}Assets/Vehicles/Semitrailer/SST_TowHitch.emat"
+    }
+   }
+   MeshParams {
+    MeshParam SST_TowHitch {
+    }
+   }
+   ApplicationVendor "Blender Foundation"
+   ApplicationName "Blender (stable FBX IO)"
+   ApplicationVersion "5.0.0"
+  }
+  FBXResourceClass XBOX_ONE : PC {
+  }
+  FBXResourceClass XBOX_SERIES : PC {
+  }
+  FBXResourceClass PS4 : PC {
+  }
+  FBXResourceClass PS5 : PC {
+  }
+  FBXResourceClass HEADLESS : PC {
+  }
+ }
+}

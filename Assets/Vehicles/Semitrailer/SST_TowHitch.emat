@@ -1,0 +1,5 @@
+MatPBRBasic {
+ SurfaceProperties "{EDB153DC99889624}Common/Materials/Game/Metal/metal_3mm.gamemat"
+ BCRMap "{BC62C82D889B7D07}Assets/Vehicles/Semitrailer/SST_TowHitch_BCR.edds"
+ NMOMap "{B71E7171F1399C48}Assets/Vehicles/Semitrailer/SST_TowHitch_NMO.edds"
+}

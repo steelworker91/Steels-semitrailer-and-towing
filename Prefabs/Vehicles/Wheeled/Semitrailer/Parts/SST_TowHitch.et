@@ -1,0 +1,10 @@
+GenericEntity {
+ ID "AA252236CCA33B37"
+ components {
+  MeshObject "{F11F84515516BE5F}" {
+   Object "{F12A1951DD9203B5}Assets/Vehicles/Semitrailer/SST_TowHitch.xob"
+  }
+  Hierarchy "{A0E8C3A0F72E95D6}" {
+  }
+ }
+}

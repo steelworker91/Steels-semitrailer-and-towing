@@ -137,12 +137,20 @@ GenericEntity {
    SimState Collision
    Static 0
   }
+  SST_SemiTractorComponent "{8081FA88A885DF2B}" {
+   m_vFifthWheel 0 -0.248 -11.3
+   m_bTowHitch 1
+   m_fHandCoupleRadius 3
+  }
   RplComponent "{B9775BCD4F580E50}" {
   }
   Hierarchy "{E4FE6700913D6523}" {
   }
  }
  {
+  GenericEntity : "{B77BB5BB2F64142D}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TowHitch.et" {
+   ID "D2485E865A656A0E"
+  }
   GenericEntity : "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et" {
    ID "7BA1AD9FA2476D17"
    coords 0.915 -0.600 -8.925
