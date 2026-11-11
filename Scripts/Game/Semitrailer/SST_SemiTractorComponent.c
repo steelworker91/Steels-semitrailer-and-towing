@@ -86,6 +86,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	protected vector m_vLastKingpin;
 	protected vector m_vKingOffset;		// eases the kingpin onto the plate after coupling
 	protected float m_fScanTimer;
+	protected float m_fTippedTime;
 	protected ref array<float> m_aComp = {};
 	protected ref array<float> m_aWheelGround = {};
 	protected float m_fTeleportDist = TELEPORT_DIST;
@@ -104,6 +105,8 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	static const float GRAVITY = 9.81;
 	static const float TELEPORT_DIST = 6;
 	static const float NO_GROUND = -1000000;
+	static const float TIPPED_UP = 0.34;		// up axis this low = more than ~70 deg over
+	static const float TIPPED_TIME = 0.5;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
@@ -226,6 +229,17 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnTrailerChanged()
 	{
+		if (DIAG)
+			m_iDiagCallbacks++;
+
+		// may come along with the other properties of this component, only another trailer resets us
+		if (m_Trailer && m_TrailerId.IsValid())
+		{
+			RplComponent rpl = RplComponent.Cast(m_Trailer.FindComponent(RplComponent));
+			if (rpl && rpl.Id() == m_TrailerId)
+				return;
+		}
+
 		ClearTrailer();
 	}
 
@@ -423,7 +437,55 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		if (IsTowed(owner))
 			return;
 
+		if (DIAG)
+			DiagFrame(owner, timeSlice);
+
 		UpdateTrain(owner, timeSlice, 0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// TEMP lag diagnostics, remove with DIAG
+	static const bool DIAG = true;
+	protected vector m_vDiagLastPos;
+	protected bool m_bDiagInit;
+	protected int m_iDiagCallbacks;
+	protected int m_iDiagInits;
+
+	protected void DiagFrame(IEntity owner, float timeSlice)
+	{
+		vector pos = owner.GetOrigin();
+		if (!m_bDiagInit)
+		{
+			m_vDiagLastPos = pos;
+			m_bDiagInit = true;
+			return;
+		}
+
+		Physics phys = owner.GetPhysics();
+		vector vel;
+		if (phys)
+			vel = phys.GetVelocity();
+
+		float speed = vel.Length();
+		vector moved = pos - m_vDiagLastPos;
+		m_vDiagLastPos = pos;
+		if (speed < 25 || timeSlice <= 0)
+			return;
+
+		// how far the truck went this frame compared to its velocity, along and across
+		vector dir = vel.Normalized();
+		float along = vector.Dot(moved, dir);
+		float across = (moved - dir * along).Length();
+
+		bool interp;
+		NwkMovementComponent nwk = NwkMovementComponent.Cast(owner.FindComponent(NwkMovementComponent));
+		if (nwk)
+			interp = nwk.IsInterpolating();
+
+		PrintFormat("SSTDIAG srv=%1 own=%2 dt=%3 kmh=%4 jump=%5 across=%6 interp=%7 cb=%8 init=%9", Replication.IsServer(), IsOwner(), timeSlice, speed * 3.6, along - speed * timeSlice, across, interp, m_iDiagCallbacks, m_iDiagInits);
+		PrintFormat("SSTDIAG2 koff=%1", m_vKingOffset.Length());
+		m_iDiagCallbacks = 0;
+		m_iDiagInits = 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -458,6 +520,13 @@ class SST_SemiTractorComponent : ScriptGameComponent
 			m_TrailerComp = SST_SemiTrailerComponent.Cast(trailer.FindComponent(SST_SemiTrailerComponent));
 			if (!m_TrailerComp)
 				return;
+		}
+
+		// a truck on its side or back drops the trailer, the trailer can't roll over with it
+		if (Replication.IsServer() && IsTipped(owner, timeSlice))
+		{
+			Uncouple();
+			return;
 		}
 
 		m_TrailerComp.SetTractor(owner);
@@ -530,6 +599,20 @@ class SST_SemiTractorComponent : ScriptGameComponent
 			Replication.BumpMe();
 		else
 			Rpc(RpcAsk_SetRelative, relPos, relAng);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool IsTipped(IEntity owner, float timeSlice)
+	{
+		vector up = owner.GetTransformAxis(1);
+		if (up[1] >= TIPPED_UP)
+		{
+			m_fTippedTime = 0;
+			return false;
+		}
+
+		m_fTippedTime += timeSlice;
+		return m_fTippedTime >= TIPPED_TIME;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -779,7 +862,14 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		m_fRoll = Math.Asin(Math.Clamp(axisX[1], -1, 1));
 		m_fRollVel = 0;
 
-		m_vKingOffset = origin - kingpin;
+		// while driving the trailer still stands where the truck was before this frame's physics,
+		// that is no offset to ease out
+		m_vKingOffset = vector.Zero;
+		if (GetSpeed() < 1)
+			m_vKingOffset = origin - kingpin;
+
+		if (DIAG)
+			m_iDiagInits++;
 
 		m_aComp.Clear();
 		m_aWheelGround.Clear();
@@ -808,6 +898,8 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		m_fRoll = Math.Asin(Math.Clamp(axisX[1], -1, 1));
 		m_fRollVel = 0;
 		m_vKingOffset = vector.Zero;
+		if (DIAG)
+			m_iDiagInits++;
 
 		m_aComp.Clear();
 		m_aWheelGround.Clear();
