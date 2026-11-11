@@ -53,6 +53,9 @@ class SST_SemiTrailerComponent : ScriptComponent
 	[Attribute("0.665 -1.09 -2", UIWidgets.Coords, "Foot of the right landing leg, trailer space (left one is mirrored)", category: "Parking")]
 	protected vector m_vLegFoot;
 
+	[Attribute(desc: "Points of the body that must not go into the ground, trailer space. Empty: the ones of the flatbed semitrailer", category: "Suspension")]
+	protected ref array<vector> m_aGroundPoints;
+
 	[Attribute("{31DD25B5E8A3BB73}Assets/Decals/Dirt/TireTracks/Data/Decal_Tracks_01.emat", UIWidgets.ResourceNamePicker, "Tyre track material", params: "emat", category: "Tracks")]
 	protected ResourceName m_sTrackMaterial;
 
@@ -136,6 +139,9 @@ class SST_SemiTrailerComponent : ScriptComponent
 		m_aCargoPoints.Insert(Vector(m_vCargoCenter[0] + hx, top, m_vCargoCenter[2] + hz));
 		m_aCargoPoints.Insert(Vector(m_vCargoCenter[0] - hx, top, m_vCargoCenter[2] - hz));
 		m_aCargoPoints.Insert(Vector(m_vCargoCenter[0] + hx, top, m_vCargoCenter[2] - hz));
+
+		if (m_aGroundPoints && !m_aGroundPoints.IsEmpty())
+			m_aBodyPoints.Copy(m_aGroundPoints);
 
 		s_aTrailers.Insert(this);
 		SetEventMask(owner, EntityEvent.FRAME);
@@ -561,15 +567,31 @@ class SST_SemiTrailerComponent : ScriptComponent
 				m_aWheelPos.Insert(Vector(pos[0], m_fAxleY, pos[2]));
 				m_aWheels.Insert(wheel);
 				m_aComp.Insert(m_fRestCompression);
+				m_aTracks.Insert(null);
 				sumZ += pos[2];
-
-				if (tracks)
-					m_aTracks.Insert(new TrackDecalFactory(m_sTrackMaterial, m_fTrackWidth, m_fTrackLifetime));
-				else
-					m_aTracks.Insert(null);
 			}
 
 			child = child.GetSibling();
+		}
+
+		// the wheels on one side run in the same rut, only the rearmost one leaves a track
+		if (tracks)
+		{
+			foreach (int i, vector wheelPos : m_aWheelPos)
+			{
+				bool rearmost = true;
+				foreach (vector other : m_aWheelPos)
+				{
+					if (other[0] * wheelPos[0] > 0 && other[2] < wheelPos[2])
+					{
+						rearmost = false;
+						break;
+					}
+				}
+
+				if (rearmost)
+					m_aTracks[i] = new TrackDecalFactory(m_sTrackMaterial, m_fTrackWidth, m_fTrackLifetime);
+			}
 		}
 
 		if (!m_aWheelPos.IsEmpty())
