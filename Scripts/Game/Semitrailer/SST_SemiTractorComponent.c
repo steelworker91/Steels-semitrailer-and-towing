@@ -87,6 +87,8 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	protected vector m_vKingOffset;		// eases the kingpin onto the plate after coupling
 	protected float m_fScanTimer;
 	protected ref array<float> m_aComp = {};
+	protected ref array<float> m_aWheelGround = {};
+	protected float m_fTeleportDist = TELEPORT_DIST;
 	protected ref array<float> m_aPointGround = {};
 	protected ref array<float> m_aPointPen = {};
 
@@ -110,7 +112,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 		m_Rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
 		m_vRelPos = m_vFifthWheel;
-		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
+		SetEventMask(owner, EntityEvent.INIT | EntityEvent.POSTFRAME);
 
 		if (GetGame() && GetGame().InPlayMode())
 			s_aTractors.Insert(this);
@@ -412,7 +414,10 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	//! After the physics update: in EOnFrame the tractor has not moved yet this frame, the trailer
+	//! would hang one frame behind it. That is speed * frame time, half a metre at 100 km/h and
+	//! changing with every frame, so the trailer jerks against the truck at speed.
+	override void EOnPostFrame(IEntity owner, float timeSlice)
 	{
 		// moved by the tractor in front, which updates us right after that
 		if (IsTowed(owner))
@@ -487,6 +492,9 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 		m_bRelInit = false;
 
+		// a fast truck covers several metres in a long frame, that is no teleport
+		m_fTeleportDist = TELEPORT_DIST + GetSpeed() * timeSlice * 1.5;
+
 		if (timeSlice > 0)
 		{
 			int steps = Math.Ceil(timeSlice / MAX_STEP);
@@ -548,7 +556,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 		if (!m_bHasState)
 			InitState(tractor, trailer, kingpin, tractorFwd, length, radius, wheelCount);
-		else if (vector.DistanceXZ(kingpin, m_vLastKingpin) > TELEPORT_DIST)
+		else if (vector.DistanceXZ(kingpin, m_vLastKingpin) > m_fTeleportDist)
 			ResetState(tractor, kingpin, tractorFwd, length, radius, wheelCount);
 
 		m_vLastKingpin = kingpin;
@@ -588,6 +596,17 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		float sinPitch = Math.Sin(m_fPitch);
 		float sinRoll = Math.Sin(m_fRoll);
 
+		// the wheels stand on the same spot in every sub step, so the ground is traced once per frame
+		bool traceWheels = firstStep || m_aWheelGround.Count() != wheelCount;
+		if (m_aWheelGround.Count() != wheelCount)
+		{
+			m_aWheelGround.Clear();
+			for (int i = 0; i < wheelCount; i++)
+			{
+				m_aWheelGround.Insert(NO_GROUND);
+			}
+		}
+
 		float force = 0;
 		float torque = 0;
 		float halfTrack = 0;
@@ -601,7 +620,10 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 			vector pos = m_vBogie + heading * along + right * side;
 			float axleY = m_fAxleY + along * sinPitch + side * sinRoll;
-			float ground = GroundY(tractor, trailer, pos, axleY);
+			if (traceWheels)
+				m_aWheelGround[i] = GroundY(tractor, trailer, pos, axleY);
+
+			float ground = m_aWheelGround[i];
 
 			float comp = -1;
 			if (ground > NO_GROUND)
@@ -760,6 +782,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		m_vKingOffset = origin - kingpin;
 
 		m_aComp.Clear();
+		m_aWheelGround.Clear();
 		for (int i = 0; i < wheelCount; i++)
 		{
 			m_aComp.Insert(m_TrailerComp.GetRestCompression());
@@ -787,6 +810,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		m_vKingOffset = vector.Zero;
 
 		m_aComp.Clear();
+		m_aWheelGround.Clear();
 		for (int i = 0; i < wheelCount; i++)
 		{
 			m_aComp.Insert(m_TrailerComp.GetRestCompression());
