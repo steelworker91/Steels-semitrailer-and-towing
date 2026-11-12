@@ -545,6 +545,28 @@ class SST_SemiTrailerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Loads on the deck that can be strapped down (SST_CargoStrapComponent). The add-ons that put
+	//! loads on the deck fill it, only loads that are children of the trailer.
+	void GetStrapLoads(notnull array<IEntity> loads)
+	{
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Server: a load that was not strapped, or whose straps broke, comes off the deck.
+	//! side: -1 off the left, 1 off the right of the trailer. velocity: of the trailer [m/s]
+	bool DropStrapLoad(IEntity load, float side, vector velocity)
+	{
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Box the straps go around, model space of the load
+	void GetStrapBounds(IEntity load, out vector mins, out vector maxs)
+	{
+		load.GetBounds(mins, maxs);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	int GetContactCount()
 	{
 		if (m_bHasCargo)

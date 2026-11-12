@@ -1,0 +1,10 @@
+GenericEntity {
+ ID "5E0BD13F7A31E7E8"
+ components {
+  MeshObject "{5E0BD13F731DE7E9}" {
+   Object "{59C25B6F02E91435}Assets/Vehicles/Semitrailer/SST_CargoStrap.xob"
+  }
+  Hierarchy "{5E0BD13F731DE7EA}" {
+  }
+ }
+}

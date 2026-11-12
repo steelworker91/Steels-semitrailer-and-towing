@@ -1,0 +1,5 @@
+MatPBRBasic {
+ SurfaceProperties "{13581C35484F3000}Common/Materials/Game/fabric.gamemat"
+ BCRMap "{EED7DD1657694752}Assets/Vehicles/Semitrailer/SST_CargoStrap_BCR.edds"
+ NMOMap "{A146023C56FF9A36}Assets/Vehicles/Semitrailer/SST_CargoStrap_NMO.edds"
+}

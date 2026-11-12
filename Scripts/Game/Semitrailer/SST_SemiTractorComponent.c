@@ -5,8 +5,7 @@
 // tractor like a real semitrailer would (the bogie trails behind the kingpin). Up/down motion of the
 // bogie, roll and ground contact are integrated here.
 //
-// Whoever owns the tractor (usually the driver) runs this and sends the trailer pose relative to
-// the tractor; all other machines just place their copy behind their own tractor.
+// Every machine runs this behind the tractor it sees, nothing about the pose goes over the network.
 // The trailer body is kinematic everywhere, it only collides.
 //
 // Coupling works like on a real fifth wheel: back the tractor under a parked trailer and the jaws
@@ -17,6 +16,11 @@
 // that takes a drawbar trailer (dolly), the dolly has it as its fifth wheel. A towed trailer does not
 // move its own trailer in its frame event, the tractor in front does that right after it moved it,
 // so the whole train is posed in order every frame.
+//
+// Plain trucks get this component as a tow hitch through overrides of their vanilla prefabs
+// (SSTTExpanded). The hitch point is then read from the truck's vanilla "tow_hook" action context.
+// A tractor with a fifth wheel can name that context too: then a drawbar trailer (dolly) goes on its
+// tow hook, a semitrailer on the fifth wheel, one trailer at a time.
 
 [ComponentEditorProps(category: "SST/Semitrailer", description: "Tractor, spawns and tows a semitrailer")]
 class SST_SemiTractorComponentClass : ScriptGameComponentClass
@@ -51,6 +55,13 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 	[Attribute("0", UIWidgets.EditBox, "Coupling by hand (user action) works up to this distance, 0 = what the action allows [m]", category: "Coupling")]
 	protected float m_fHandCoupleRadius;
+
+	[Attribute("", UIWidgets.EditBox, "Tow hook from this action context of the vehicle (vanilla trucks: tow_hook). With Tow hitch it replaces the fifth wheel position, without it the tractor takes drawbar trailers there as well. Empty = none", category: "Coupling")]
+	protected string m_sHitchContext;
+
+	protected vector m_vHitch;			// tow hook of a tractor that also has a fifth wheel
+	protected bool m_bHasHitch;
+	protected vector m_vCouple;			// where the current trailer hangs: fifth wheel or tow hook
 
 	[RplProp(onRplName: "OnTrailerChanged")]
 	protected RplId m_TrailerId;
@@ -114,6 +125,28 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
+		if (!m_sHitchContext.IsEmpty())
+		{
+			ActionsManagerComponent actions = ActionsManagerComponent.Cast(owner.FindComponent(ActionsManagerComponent));
+			UserActionContext context;
+			if (actions)
+				context = actions.GetContext(m_sHitchContext);
+
+			vector mat[4];
+			if (context && context.GetTransformationModel(mat))
+			{
+				if (m_bTowHitch)
+				{
+					m_vFifthWheel = mat[3];
+				}
+				else
+				{
+					m_vHitch = mat[3];
+					m_bHasHitch = true;
+				}
+			}
+		}
+
 		if (GetGame().InPlayMode() && Replication.IsServer() && !m_sTrailerPrefab.IsEmpty())
 			GetGame().GetCallqueue().CallLater(SpawnTrailer, 100, false);
 	}
@@ -262,7 +295,11 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	{
 		IEntity owner = GetOwner();
 		SST_SemiTrailerComponent comp = SST_SemiTrailerComponent.Cast(trailer.FindComponent(SST_SemiTrailerComponent));
-		if (!comp || trailer == owner || comp.HasDrawbar() != m_bTowHitch)
+		if (!comp || trailer == owner)
+			return false;
+
+		bool drawbar = comp.HasDrawbar();
+		if (m_bTowHitch != drawbar && !(drawbar && m_bHasHitch))
 			return false;
 
 		IEntity entity = owner;
@@ -278,6 +315,23 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		}
 
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Where a trailer of this kind hangs on us, tractor space
+	protected vector CouplePoint(bool drawbar)
+	{
+		if (drawbar && m_bHasHitch && !m_bTowHitch)
+			return m_vHitch;
+
+		return m_vFifthWheel;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static bool HasDrawbar(IEntity trailer)
+	{
+		SST_SemiTrailerComponent comp = SST_SemiTrailerComponent.Cast(trailer.FindComponent(SST_SemiTrailerComponent));
+		return comp && comp.HasDrawbar();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -311,7 +365,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 			return false;
 
 		IEntity owner = GetOwner();
-		vector plate = owner.CoordToParent(m_vFifthWheel);
+		vector plate = owner.CoordToParent(CouplePoint(HasDrawbar(trailer)));
 		vector kingpin = trailer.GetOrigin();
 		if (vector.DistanceXZ(plate, kingpin) > radius)
 			return false;
@@ -331,12 +385,21 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Free tractor with its fifth wheel under the kingpin of the given trailer (by hand)
+	//! Free tractor with its fifth wheel under the kingpin of the given trailer (by hand). The hand
+	//! coupling radius of a tractor is for drawbar trailers only, a semitrailer has to be on the plate.
 	static SST_SemiTractorComponent FindTractorFor(IEntity trailer, float radius)
 	{
+		bool drawbar = HasDrawbar(trailer);
 		foreach (SST_SemiTractorComponent tractor : s_aTractors)
 		{
-			if (tractor && !tractor.GetTrailer() && tractor.IsInCouplingRange(trailer, Math.Max(radius, tractor.GetHandCoupleRadius())))
+			if (!tractor || tractor.GetTrailer())
+				continue;
+
+			float r = radius;
+			if (drawbar)
+				r = Math.Max(r, tractor.GetHandCoupleRadius());
+
+			if (tractor.IsInCouplingRange(trailer, r))
 				return tractor;
 		}
 
@@ -355,7 +418,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		if (!CanCoupleNow())
 			return;
 
-		vector plate = owner.CoordToParent(m_vFifthWheel);
 		array<SST_SemiTrailerComponent> trailers = SST_SemiTrailerComponent.GetAll();
 		foreach (SST_SemiTrailerComponent comp : trailers)
 		{
@@ -363,6 +425,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 				continue;
 
 			IEntity trailer = comp.GetOwner();
+			vector plate = owner.CoordToParent(CouplePoint(comp.HasDrawbar()));
 			float dist = vector.DistanceXZ(plate, trailer.GetOrigin());
 			if (dist > 20)
 				continue;
@@ -468,6 +531,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		// Every machine simulates the trailer behind the truck it sees, so nothing has to go over the
 		// network while driving and the trailer always matches the local truck.
 		m_TrailerComp.SetSimulated(true);
+		m_vCouple = CouplePoint(m_TrailerComp.HasDrawbar());
 
 		// a fast truck covers several metres in a long frame, that is no teleport
 		m_fTeleportDist = TELEPORT_DIST + GetSpeed() * timeSlice * 1.5;
@@ -518,7 +582,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		float travel = m_TrailerComp.GetTravel();
 		float mass = m_TrailerComp.GetMass();
 
-		vector kingpin = tractor.CoordToParent(m_vFifthWheel);
+		vector kingpin = tractor.CoordToParent(m_vCouple);
 		vector tractorFwd = tractor.GetTransformAxis(2);
 		tractorFwd[1] = 0;
 		if (tractorFwd.LengthSq() < 0.0001)
@@ -815,7 +879,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		mat[0] = right * c + up * s;
 		mat[1] = up * c - right * s;
 		mat[2] = fwd;
-		mat[3] = tractor.CoordToParent(m_vFifthWheel) + m_vKingOffset;
+		mat[3] = tractor.CoordToParent(m_vCouple) + m_vKingOffset;
 		trailer.SetWorldTransform(mat);
 		trailer.Update();
 

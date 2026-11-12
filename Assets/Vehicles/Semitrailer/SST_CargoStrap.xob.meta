@@ -1,0 +1,30 @@
+MetaFileClass {
+ Name "{59C25B6F02E91435}Assets/Vehicles/Semitrailer/SST_CargoStrap.xob"
+ Configurations {
+  FBXResourceClass PC {
+   MaterialAssigns {
+    MaterialAssignClass "{BE3278FB38D8ABD3}" {
+     SourceMaterial "SST_CargoStrap"
+     AssignedMaterial "{85CA69A8D63958E5}Assets/Vehicles/Semitrailer/SST_CargoStrap.emat"
+    }
+   }
+   MeshParams {
+    MeshParam SST_CargoStrap {
+    }
+   }
+   ApplicationVendor "Blender Foundation"
+   ApplicationName "Blender (stable FBX IO)"
+   ApplicationVersion "5.0.0"
+  }
+  FBXResourceClass XBOX_ONE : PC {
+  }
+  FBXResourceClass XBOX_SERIES : PC {
+  }
+  FBXResourceClass PS4 : PC {
+  }
+  FBXResourceClass PS5 : PC {
+  }
+  FBXResourceClass HEADLESS : PC {
+  }
+ }
+}

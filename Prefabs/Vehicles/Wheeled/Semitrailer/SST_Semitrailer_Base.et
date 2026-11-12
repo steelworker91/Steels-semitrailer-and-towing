@@ -6,6 +6,8 @@ GenericEntity {
   }
   SST_SemiTrailerComponent "{36C70A973A6D5660}" {
   }
+  SST_CargoStrapComponent "{8BE41A04068B54EE}" {
+  }
   SlotManagerComponent "{5BA4CFE569FEC603}" {
    Slots {
     EntitySlotInfo Cargo {
@@ -83,6 +85,34 @@ GenericEntity {
      }
      Radius 1.8
     }
+    UserActionContext "{6687B3E315C8C43F}" {
+     ContextName "straps_fl"
+     Position PointInfo "{C4C323D62897A803}" {
+      Offset -1.6 0.3 -2.5
+     }
+     Radius 3
+    }
+    UserActionContext "{029B480942F4CF02}" {
+     ContextName "straps_fr"
+     Position PointInfo "{67CA1F18810D7F2C}" {
+      Offset 1.6 0.3 -2.5
+     }
+     Radius 3
+    }
+    UserActionContext "{4A4E2FDAED685A0F}" {
+     ContextName "straps_rl"
+     Position PointInfo "{19067094D078BEB7}" {
+      Offset -1.6 0.3 -8.3
+     }
+     Radius 3
+    }
+    UserActionContext "{34A17813615EA81B}" {
+     ContextName "straps_rr"
+     Position PointInfo "{0619D4F9A593F1C1}" {
+      Offset 1.6 0.3 -8.3
+     }
+     Radius 3
+    }
    }
    additionalActions {
     SST_TrailerCouplingAction "{99A026D61C0BDD2A}" {
@@ -92,6 +122,57 @@ GenericEntity {
      UIInfo UIInfo "{041B8998325C1A21}" {
       Name "Couple / uncouple trailer"
      }
+    }
+    SST_CargoStrapAction "{AFAE480ED9BD2441}" {
+     ParentContextList {
+      "straps_fl"
+      "straps_fr"
+      "straps_rl"
+      "straps_rr"
+     }
+     UIInfo UIInfo "{62DCEE2697605E0C}" {
+      Name "Strap down load"
+     }
+     Duration 4
+    }
+    SST_CargoStrapAction "{F009470580BE4256}" {
+     ParentContextList {
+      "straps_fl"
+      "straps_fr"
+      "straps_rl"
+      "straps_rr"
+     }
+     UIInfo UIInfo "{09A7E3DE5AD1241D}" {
+      Name "Strap down load (no visual straps)"
+     }
+     Duration 4
+     m_iMode 1
+    }
+    SST_CargoStrapAction "{B82F4A7ECC154350}" {
+     ParentContextList {
+      "straps_fl"
+      "straps_fr"
+      "straps_rl"
+      "straps_rr"
+     }
+     UIInfo UIInfo "{E26F50981C5FCE60}" {
+      Name "Strap down load (can't come loose)"
+     }
+     Duration 4
+     m_iMode 2
+    }
+    SST_CargoStrapAction "{F8E2C0572F9CCE2B}" {
+     ParentContextList {
+      "straps_fl"
+      "straps_fr"
+      "straps_rl"
+      "straps_rr"
+     }
+     UIInfo UIInfo "{7FEE1D70E42901C6}" {
+      Name "Release straps"
+     }
+     Duration 2
+     m_bRelease 1
     }
    }
   }
