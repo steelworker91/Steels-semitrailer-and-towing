@@ -55,26 +55,13 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	[RplProp(onRplName: "OnTrailerChanged")]
 	protected RplId m_TrailerId;
 
-	[RplProp()]
-	protected vector m_vRelPos;
-
-	[RplProp()]
-	protected vector m_vRelAng;
-
 	protected IEntity m_Trailer;
-	protected RplComponent m_Rpl;
 	protected SST_SemiTrailerComponent m_TrailerComp;
 	protected BaseLightManagerComponent m_Lights;
 	protected IEntity m_LightsOwner;
 	protected float m_fLightTimer;
-	protected float m_fSendTimer;
 
-	// proxy side, smoothed pose
-	protected vector m_vRelPosCur;
-	protected vector m_vRelAngCur;
-	protected bool m_bRelInit;
-
-	// owner side
+	// trailer simulation, runs on every machine
 	protected bool m_bHasState;
 	protected vector m_vBogie;			// only x/z are used
 	protected vector m_vHeading;
@@ -100,7 +87,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 	static const int MAX_CHAIN = 8;
 	static const float LIGHT_INTERVAL = 0.1;
-	static const float SEND_INTERVAL = 0.05;
 	static const float MAX_STEP = 0.004;
 	static const float GRAVITY = 9.81;
 	static const float TELEPORT_DIST = 6;
@@ -113,8 +99,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	{
 		super.OnPostInit(owner);
 
-		m_Rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
-		m_vRelPos = m_vFifthWheel;
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.POSTFRAME);
 
 		if (GetGame() && GetGame().InPlayMode())
@@ -195,13 +179,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		m_TrailerComp = comp;
 		m_TrailerId = rpl.Id();
 		m_bHasState = false;
-		m_bRelInit = false;
-
-		// proxies start from where the trailer stands now
-		vector relPos, relAng;
-		GetRelativePose(owner, trailer, relPos, relAng);
-		m_vRelPos = relPos;
-		m_vRelAng = relAng;
 
 		comp.OnCoupled(owner);
 		Replication.BumpMe();
@@ -229,9 +206,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnTrailerChanged()
 	{
-		if (DIAG)
-			m_iDiagCallbacks++;
-
 		// may come along with the other properties of this component, only another trailer resets us
 		if (m_Trailer && m_TrailerId.IsValid())
 		{
@@ -255,7 +229,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		m_Trailer = null;
 		m_TrailerComp = null;
 		m_bHasState = false;
-		m_bRelInit = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -422,12 +395,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected bool IsOwner()
-	{
-		return !m_Rpl || m_Rpl.IsOwner();
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! After the physics update: in EOnFrame the tractor has not moved yet this frame, the trailer
 	//! would hang one frame behind it. That is speed * frame time, half a metre at 100 km/h and
 	//! changing with every frame, so the trailer jerks against the truck at speed.
@@ -437,55 +404,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		if (IsTowed(owner))
 			return;
 
-		if (DIAG)
-			DiagFrame(owner, timeSlice);
-
 		UpdateTrain(owner, timeSlice, 0);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// TEMP lag diagnostics, remove with DIAG
-	static const bool DIAG = true;
-	protected vector m_vDiagLastPos;
-	protected bool m_bDiagInit;
-	protected int m_iDiagCallbacks;
-	protected int m_iDiagInits;
-
-	protected void DiagFrame(IEntity owner, float timeSlice)
-	{
-		vector pos = owner.GetOrigin();
-		if (!m_bDiagInit)
-		{
-			m_vDiagLastPos = pos;
-			m_bDiagInit = true;
-			return;
-		}
-
-		Physics phys = owner.GetPhysics();
-		vector vel;
-		if (phys)
-			vel = phys.GetVelocity();
-
-		float speed = vel.Length();
-		vector moved = pos - m_vDiagLastPos;
-		m_vDiagLastPos = pos;
-		if (speed < 25 || timeSlice <= 0)
-			return;
-
-		// how far the truck went this frame compared to its velocity, along and across
-		vector dir = vel.Normalized();
-		float along = vector.Dot(moved, dir);
-		float across = (moved - dir * along).Length();
-
-		bool interp;
-		NwkMovementComponent nwk = NwkMovementComponent.Cast(owner.FindComponent(NwkMovementComponent));
-		if (nwk)
-			interp = nwk.IsInterpolating();
-
-		PrintFormat("SSTDIAG srv=%1 own=%2 dt=%3 kmh=%4 jump=%5 across=%6 interp=%7 cb=%8 init=%9", Replication.IsServer(), IsOwner(), timeSlice, speed * 3.6, along - speed * timeSlice, across, interp, m_iDiagCallbacks, m_iDiagInits);
-		PrintFormat("SSTDIAG2 koff=%1", m_vKingOffset.Length());
-		m_iDiagCallbacks = 0;
-		m_iDiagInits = 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -546,20 +465,9 @@ class SST_SemiTractorComponent : ScriptGameComponent
 			m_TrailerComp.SyncLights(head, m_Lights);
 		}
 
-		// A trailer that tows (road train) runs the simulation of its own trailer on every machine. Taking
-		// the pose relative to it from the network would carry every pitch of the trailer in front rigidly
-		// to the rear: a bump at the front lifts the end of a long train by metres.
-		bool isOwner = IsOwner();
-		bool simulate = isOwner || owner.FindComponent(SST_SemiTrailerComponent) != null;
-		m_TrailerComp.SetSimulated(simulate);
-		if (!simulate)
-		{
-			m_bHasState = false;
-			FollowRelativePose(owner, trailer, timeSlice);
-			return;
-		}
-
-		m_bRelInit = false;
+		// Every machine simulates the trailer behind the truck it sees, so nothing has to go over the
+		// network while driving and the trailer always matches the local truck.
+		m_TrailerComp.SetSimulated(true);
 
 		// a fast truck covers several metres in a long frame, that is no teleport
 		m_fTeleportDist = TELEPORT_DIST + GetSpeed() * timeSlice * 1.5;
@@ -580,25 +488,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		}
 
 		ApplyPose(owner, trailer);
-		if (!isOwner)
-			return;
-
-		m_fSendTimer += timeSlice;
-		if (m_fSendTimer < SEND_INTERVAL)
-			return;
-
-		m_fSendTimer = 0;
-		vector relPos, relAng;
-		GetRelativePose(owner, trailer, relPos, relAng);
-		if (vector.DistanceSq(relPos, m_vRelPos) < 0.0001 && vector.DistanceSq(relAng, m_vRelAng) < 0.01)
-			return;
-
-		m_vRelPos = relPos;
-		m_vRelAng = relAng;
-		if (Replication.IsServer())
-			Replication.BumpMe();
-		else
-			Rpc(RpcAsk_SetRelative, relPos, relAng);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -868,9 +757,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		if (GetSpeed() < 1)
 			m_vKingOffset = origin - kingpin;
 
-		if (DIAG)
-			m_iDiagInits++;
-
 		m_aComp.Clear();
 		m_aWheelGround.Clear();
 		for (int i = 0; i < wheelCount; i++)
@@ -898,8 +784,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		m_fRoll = Math.Asin(Math.Clamp(axisX[1], -1, 1));
 		m_fRollVel = 0;
 		m_vKingOffset = vector.Zero;
-		if (DIAG)
-			m_iDiagInits++;
 
 		m_aComp.Clear();
 		m_aWheelGround.Clear();
@@ -992,64 +876,5 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		float c = Math.Cos(angle);
 		float s = Math.Sin(angle);
 		return Vector(v[0] * c + v[2] * s, 0, v[2] * c - v[0] * s);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Unreliable, RplRcver.Server)]
-	protected void RpcAsk_SetRelative(vector relPos, vector relAng)
-	{
-		m_vRelPos = relPos;
-		m_vRelAng = relAng;
-		Replication.BumpMe();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void GetRelativePose(IEntity tractor, IEntity trailer, out vector relPos, out vector relAng)
-	{
-		vector tractorMat[4];
-		vector trailerMat[4];
-		vector rel[4];
-		tractor.GetWorldTransform(tractorMat);
-		trailer.GetWorldTransform(trailerMat);
-		Math3D.MatrixInvMultiply4(tractorMat, trailerMat, rel);
-
-		vector rot[3];
-		rot[0] = rel[0];
-		rot[1] = rel[1];
-		rot[2] = rel[2];
-
-		relPos = rel[3];
-		relAng = Math3D.MatrixToAngles(rot);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void FollowRelativePose(IEntity tractor, IEntity trailer, float timeSlice)
-	{
-		if (!m_bRelInit)
-		{
-			m_vRelPosCur = m_vRelPos;
-			m_vRelAngCur = m_vRelAng;
-			m_bRelInit = true;
-		}
-
-		float t = Math.Clamp(timeSlice * 12, 0, 1);
-		m_vRelPosCur += (m_vRelPos - m_vRelPosCur) * t;
-		m_vRelAngCur += (m_vRelAng - m_vRelAngCur) * t;
-
-		vector rot[3];
-		Math3D.AnglesToMatrix(m_vRelAngCur, rot);
-
-		vector rel[4];
-		rel[0] = rot[0];
-		rel[1] = rot[1];
-		rel[2] = rot[2];
-		rel[3] = m_vRelPosCur;
-
-		vector tractorMat[4];
-		vector world[4];
-		tractor.GetWorldTransform(tractorMat);
-		Math3D.MatrixMultiply4(tractorMat, rel, world);
-		trailer.SetWorldTransform(world);
-		trailer.Update();
 	}
 }

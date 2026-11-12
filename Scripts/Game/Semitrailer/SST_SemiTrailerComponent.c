@@ -90,6 +90,7 @@ class SST_SemiTrailerComponent : ScriptComponent
 	protected float m_fNodeTimer;
 	protected vector m_vNodePos;
 	protected bool m_bNodePosSet;
+	protected bool m_bStreamingOff;
 	protected bool m_bApplyPark;
 	protected BaseLightManagerComponent m_LightManager;
 	protected bool m_bSimulated;
@@ -718,9 +719,40 @@ class SST_SemiTrailerComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! The trailer is moved without networked movement, so the replication scheduler has to be told
-	//! where it is now (otherwise a towed trailer streams out where it was placed)
+	//! where it is now (otherwise a towed trailer streams out where it was placed).
+	//! While coupled the trailer is not streamed at all: with its node moved every second the driver's
+	//! truck jumped sideways once a second at speed (with ping). The node is moved once after
+	//! uncoupling instead.
 	protected void UpdateNode(IEntity owner, float timeSlice)
 	{
+		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
+		if (!rpl)
+			return;
+
+		if (m_Tractor)
+		{
+			if (!m_bStreamingOff)
+			{
+				rpl.EnableStreaming(false);
+				m_bStreamingOff = true;
+			}
+
+			return;
+		}
+
+		if (m_bStreamingOff)
+		{
+			if (m_bNodePosSet)
+				rpl.ForceNodeMovement(m_vNodePos);
+
+			m_vNodePos = owner.GetOrigin();
+			m_bNodePosSet = true;
+			rpl.EnableStreaming(true);
+			m_bStreamingOff = false;
+			m_fNodeTimer = 0;
+			return;
+		}
+
 		m_fNodeTimer += timeSlice;
 		if (m_fNodeTimer < 1)
 			return;
@@ -737,10 +769,7 @@ class SST_SemiTrailerComponent : ScriptComponent
 		if (vector.DistanceSq(pos, m_vNodePos) < 1)
 			return;
 
-		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
-		if (rpl)
-			rpl.ForceNodeMovement(m_vNodePos);
-
+		rpl.ForceNodeMovement(m_vNodePos);
 		m_vNodePos = pos;
 	}
 
