@@ -66,6 +66,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	[RplProp(onRplName: "OnTrailerChanged")]
 	protected RplId m_TrailerId;
 
+
 	protected IEntity m_Trailer;
 	protected SST_SemiTrailerComponent m_TrailerComp;
 	protected BaseLightManagerComponent m_Lights;
@@ -145,6 +146,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 					m_bHasHitch = true;
 				}
 			}
+
 		}
 
 		if (GetGame().InPlayMode() && Replication.IsServer() && !m_sTrailerPrefab.IsEmpty())
@@ -370,9 +372,15 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		if (vector.DistanceXZ(plate, kingpin) > radius)
 			return false;
 
-		// a parked trailer sits a bit lower, the plate lifts it
+		// a parked trailer sits a bit lower, the plate lifts it. A parked dolly rests its drawbar eye on
+		// the leg 0.3 m above the ground, vanilla tow hooks are at 0.9 (M923A1) and 1.0 m (Ural-4320):
+		// the drawbar is lifted onto the hook
 		float dy = kingpin[1] - plate[1];
-		if (dy < -0.6 || dy > 0.3)
+		float lowest = -0.6;
+		if (HasDrawbar(trailer))
+			lowest = -1.0;
+
+		if (dy < lowest || dy > 0.3)
 			return false;
 
 		vector fwd = owner.GetTransformAxis(2);
