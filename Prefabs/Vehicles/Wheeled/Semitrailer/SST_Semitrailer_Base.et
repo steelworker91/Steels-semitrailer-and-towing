@@ -180,7 +180,8 @@ GenericEntity {
    m_vIconPos 0 0.5 -5
    m_EntityType SYSTEM
    m_UIInfo SCR_EditableEntityUIInfo "{B617870A2457A987}" {
-    Name "Semitrailer"
+    Name "Flatbed Trailer"
+    Icon "{7877F2AE488CEDE5}UI/Textures/Editor/SST_Icon_Flatbed.edds"
     Description "Flatbed semitrailer. Back a tractor under the kingpin to couple it, uncouple it at the front left of the trailer."
     m_aAuthoredLabels {
      CONTENT_MODDED TRAIT_STEELS_TRUCKS
