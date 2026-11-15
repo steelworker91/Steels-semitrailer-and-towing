@@ -1,0 +1,30 @@
+MetaFileClass {
+ Name "{CB4951AEC23B80C9}Assets/Vehicles/Semitrailer/SST_LashingChain.xob"
+ Configurations {
+  FBXResourceClass PC {
+   MaterialAssigns {
+    MaterialAssignClass "{767F064FC6DEE2EE}" {
+     SourceMaterial "SST_LashingChain"
+     AssignedMaterial "{C201E01FFC87B616}Assets/Vehicles/Semitrailer/SST_LashingChain.emat"
+    }
+   }
+   MeshParams {
+    MeshParam SST_LashingChain {
+    }
+   }
+   ApplicationVendor "Blender Foundation"
+   ApplicationName "Blender (stable FBX IO)"
+   ApplicationVersion "5.0.0"
+  }
+  FBXResourceClass XBOX_ONE : PC {
+  }
+  FBXResourceClass XBOX_SERIES : PC {
+  }
+  FBXResourceClass PS4 : PC {
+  }
+  FBXResourceClass PS5 : PC {
+  }
+  FBXResourceClass HEADLESS : PC {
+  }
+ }
+}

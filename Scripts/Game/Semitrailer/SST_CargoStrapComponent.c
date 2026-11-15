@@ -13,6 +13,10 @@
 // how loose the straps are (0 tight, 1 loose, 2 about to break, for the warnings) and draw the straps
 // themselves, as local children of the trailer. The straps are only built again when other loads are
 // strapped, not while driving.
+//
+// Instead of straps a load can be lashed down with chains: four chains with a turnbuckle each, from the
+// front and rear corners of the load across to the other side of the deck ahead of and behind it, the
+// two at each end crossed (like tanks on a rail flatcar). Chains wear slower than straps.
 
 [ComponentEditorProps(category: "SST/Semitrailer", description: "Straps for the load of a trailer")]
 class SST_CargoStrapComponentClass : ScriptComponentClass
@@ -23,6 +27,15 @@ class SST_CargoStrapComponent : ScriptComponent
 {
 	[Attribute("{5E0BD13F731DE7E8}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_CargoStrap.et", UIWidgets.ResourceNamePicker, "Strap piece, 1 m long along +Z from its origin", params: "et")]
 	protected ResourceName m_sStrapPrefab;
+
+	[Attribute("{2B7107296D655C60}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_LashingChain.et", UIWidgets.ResourceNamePicker, "Lashing chain piece, 0.5 m long along +Z from its origin", params: "et", category: "Chains")]
+	protected ResourceName m_sChainPrefab;
+
+	[Attribute("{8FED9BA238F7EE28}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_ChainTensioner.et", UIWidgets.ResourceNamePicker, "Turnbuckle in the middle of each chain, 0.585 m long along +Z from its origin", params: "et", category: "Chains")]
+	protected ResourceName m_sTensionerPrefab;
+
+	[Attribute("0.25", UIWidgets.EditBox, "Chains wear this much of what straps wear", category: "Chains")]
+	protected float m_fChainWear;
 
 	[Attribute("3", UIWidgets.EditBox, "Straps wear above this acceleration of the trailer [m/s2]", category: "Wear")]
 	protected float m_fWearAccel;
@@ -70,7 +83,7 @@ class SST_CargoStrapComponent : ScriptComponent
 	[RplProp(onRplName: "OnStrapsChanged")]
 	protected ref array<int> m_aStage = {};
 
-	// how each load is strapped (STRAP_NORMAL, STRAP_HIDDEN, STRAP_FIXED)
+	// how each load is strapped (STRAP_NORMAL, STRAP_HIDDEN, STRAP_FIXED, STRAP_CHAIN)
 	[RplProp(onRplName: "OnStrapsChanged")]
 	protected ref array<int> m_aMode = {};
 
@@ -87,6 +100,8 @@ class SST_CargoStrapComponent : ScriptComponent
 	// strap pieces, every machine but a dedicated server
 	protected bool m_bDraw;
 	protected ref Resource m_StrapRes;
+	protected ref Resource m_ChainRes;
+	protected ref Resource m_TensionerRes;
 	protected ref array<IEntity> m_aPieces = {};
 	protected string m_sDrawn;
 	protected ref array<RplId> m_aDrawnIds = {};
@@ -103,6 +118,8 @@ class SST_CargoStrapComponent : ScriptComponent
 	static const int STRAP_HIDDEN = 1;
 	//! Drawn, never work loose or break
 	static const int STRAP_FIXED = 2;
+	//! Lashing chains instead of straps, wear slower
+	static const int STRAP_CHAIN = 3;
 
 	protected static const float LOOSE_AT = 0.5;
 	protected static const float BREAK_SOON_AT = 0.8;
@@ -120,6 +137,11 @@ class SST_CargoStrapComponent : ScriptComponent
 	protected static const int BLADE_SAMPLES = 180;
 	protected static const int ROTOR_STRAPS = 4;
 	protected static const float PROFILE_STEP = 0.05;
+	protected static const float CHAIN_PIECE = 0.5;
+	protected static const float TENSIONER_LENGTH = 0.585;
+	protected static const float CHAIN_HEIGHT_MIN = 0.25;
+	protected static const float CHAIN_HEIGHT_MAX = 0.6;
+	protected static const float CHAIN_REACH = 2.5;
 
 	protected static IEntity s_TraceLoad;
 
@@ -288,6 +310,19 @@ class SST_CargoStrapComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Is any load held down this way
+	bool HasMode(int mode)
+	{
+		foreach (int i, RplId id : m_aIds)
+		{
+			if (GetMode(i) == mode)
+				return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void RemoveAt(int i)
 	{
 		m_aIds.RemoveOrdered(i);
@@ -407,10 +442,15 @@ class SST_CargoStrapComponent : ScriptComponent
 				continue;
 			}
 
-			if (accelH <= m_fWearAccel || i >= m_aWear.Count() || GetMode(i) != STRAP_NORMAL)
+			int mode = GetMode(i);
+			if (accelH <= m_fWearAccel || i >= m_aWear.Count() || (mode != STRAP_NORMAL && mode != STRAP_CHAIN))
 				continue;
 
-			m_aWear[i] = m_aWear[i] + (accelH - m_fWearAccel) * timeSlice / m_fWearTime;
+			float rate = 1;
+			if (mode == STRAP_CHAIN)
+				rate = m_fChainWear;
+
+			m_aWear[i] = m_aWear[i] + (accelH - m_fWearAccel) * timeSlice / m_fWearTime * rate;
 			if (m_aWear[i] >= 1)
 			{
 				RemoveAt(i);
@@ -521,6 +561,7 @@ class SST_CargoStrapComponent : ScriptComponent
 	protected void ShowStageHints()
 	{
 		int worst = 0;
+		bool chains = false;
 		array<RplId> ids = {};
 		array<int> stages = {};
 		foreach (int i, RplId id : m_aIds)
@@ -537,8 +578,11 @@ class SST_CargoStrapComponent : ScriptComponent
 			if (known >= 0)
 				before = m_aHintStage[known];
 
-			if (stage > before)
-				worst = Math.Max(worst, stage);
+			if (stage > before && stage >= worst)
+			{
+				worst = stage;
+				chains = GetMode(i) == STRAP_CHAIN;
+			}
 		}
 
 		m_aHintIds = ids;
@@ -547,10 +591,18 @@ class SST_CargoStrapComponent : ScriptComponent
 		if (worst == 0 || !IsLocalPlayerAboard())
 			return;
 
+		string what = "cargo straps";
+		string title = "Cargo straps";
+		if (chains)
+		{
+			what = "lashing chains";
+			title = "Lashing chains";
+		}
+
 		if (worst == 1)
-			SCR_HintManagerComponent.ShowCustomHint("The cargo straps are working loose. Stop and tighten them.", "Cargo straps", HINT_TIME);
+			SCR_HintManagerComponent.ShowCustomHint(string.Format("The %1 are working loose. Stop and tighten them.", what), title, HINT_TIME);
 		else
-			SCR_HintManagerComponent.ShowCustomHint("The cargo straps are about to break! Stop and tighten them.", "Cargo straps", HINT_TIME);
+			SCR_HintManagerComponent.ShowCustomHint(string.Format("The %1 are about to break! Stop and tighten them.", what), title, HINT_TIME);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -606,7 +658,7 @@ class SST_CargoStrapComponent : ScriptComponent
 
 			IEntity onDeck = FindEntity(strapped);
 			if (onDeck && onDeck.GetParent() == owner)
-				BuildStraps(owner, onDeck);
+				BuildStraps(owner, onDeck, GetMode(n));
 		}
 	}
 
@@ -623,8 +675,8 @@ class SST_CargoStrapComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Straps around the box the load takes on the deck
-	protected void BuildStraps(IEntity owner, IEntity load)
+	//! Straps around the box the load takes on the deck (or chains from its corners)
+	protected void BuildStraps(IEntity owner, IEntity load, int mode)
 	{
 		vector mins, maxs;
 		m_Trailer.GetStrapBounds(load, mins, maxs);
@@ -666,7 +718,9 @@ class SST_CargoStrapComponent : ScriptComponent
 		// the straps over the top
 		VehicleWheeledSimulation sim = VehicleWheeledSimulation.Cast(load.FindComponent(VehicleWheeledSimulation));
 		VehicleHelicopterSimulation heli = VehicleHelicopterSimulation.Cast(load.FindComponent(VehicleHelicopterSimulation));
-		if (sim && sim.WheelCount() > 0)
+		if (mode == STRAP_CHAIN)
+			ChainDown(owner, load, lo, hi);
+		else if (sim && sim.WheelCount() > 0)
 			StrapWheels(owner, load, sim, local, sag);
 		else if (!heli || !StrapRotor(owner, load, heli, local, lo, hi, sag))
 			StrapAround(owner, load, local, lo, hi, sag);
@@ -1265,6 +1319,218 @@ class SST_CargoStrapComponent : ScriptComponent
 
 			hull.Insert(p);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Four lashing chains: from low on the front and the rear of the load, a bit in from its sides,
+	//! across to the other side of the deck ahead of and behind it, so the two chains at each end cross
+	//! (like tanks on a rail flatcar). One of them is tied a bit further out so they don't run through
+	//! each other where they cross. To the nearest ring when there is one.
+	protected void ChainDown(IEntity owner, IEntity load, vector lo, vector hi)
+	{
+		float deckFront, deckRear;
+		GetChainSpan(owner, deckFront, deckRear);
+
+		float midX = (lo[0] + hi[0]) * 0.5;
+		float midZ = (lo[2] + hi[2]) * 0.5;
+		float halfW = (hi[0] - lo[0]) * 0.5;
+		float y = m_fDeckY + Math.Clamp((hi[1] - m_fDeckY) * 0.3, CHAIN_HEIGHT_MIN, CHAIN_HEIGHT_MAX);
+
+		for (int face = 0; face < 2; face++)
+		{
+			float leftTieZ = 0;
+			float dir = 1;
+			float zEnd = hi[2];
+			if (face == 1)
+			{
+				dir = -1;
+				zEnd = lo[2];
+			}
+
+			for (int s = 0; s < 2; s++)
+			{
+				float side = -1;
+				if (s == 1)
+					side = 1;
+
+				float x = midX + side * halfW * 0.6;
+				vector attach = Vector(x, y, zEnd);
+				vector hit;
+				if (TraceAlongZ(owner, load, x, y, zEnd + dir * 0.3, midZ, hit))
+					attach = hit + Vector(0, 0, dir * 0.02);
+
+				// the right chain ends a bit further out than the left one
+				float extra = 0;
+				if (s == 1)
+					extra = 0.3;
+
+				float tieZ = attach[2] + dir * (1 + extra);
+				float ringZ;
+				if (RingBeyond(attach[2] + dir * (0.5 + extra), dir, ringZ) && Math.AbsFloat(ringZ - attach[2]) <= CHAIN_REACH)
+					tieZ = ringZ;
+
+				// not the same ring as the left chain
+				if (s == 1 && Math.AbsFloat(tieZ - leftTieZ) < 0.1 && RingBeyond(leftTieZ + dir * 0.1, dir, ringZ))
+					tieZ = ringZ;
+
+				tieZ = Math.Clamp(tieZ, deckRear, deckFront);
+				if (s == 0)
+					leftTieZ = tieZ;
+
+				// tied down on the other side of the deck
+				vector ring, edge;
+				TiePoints(-side, tieZ, 0, ring, edge);
+
+				Chain(owner, attach, edge, true);
+				if (vector.Distance(edge, ring) > 0.02)
+					Chain(owner, edge, ring, false);
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Where along the trailer chains can be tied down: between the first and the last ring pair, on
+	//! the usable deck of a carrier without rings, else on the whole trailer. Never past the end of the
+	//! deck, the chain would hang in the air there.
+	protected void GetChainSpan(IEntity owner, out float front, out float rear)
+	{
+		if (m_iRingCount > 0)
+		{
+			front = m_fRingFront;
+			rear = m_fRingFront - m_fRingSpacing * (m_iRingCount - 1);
+			return;
+		}
+
+		SST_VehicleCarrierComponent carrier = SST_VehicleCarrierComponent.Cast(owner.FindComponent(SST_VehicleCarrierComponent));
+		if (carrier)
+		{
+			carrier.GetDeckSpan(front, rear);
+			return;
+		}
+
+		vector mins, maxs;
+		owner.GetBounds(mins, maxs);
+		front = maxs[2] - 0.1;
+		rear = mins[2] + 0.1;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Trace at x, y (trailer space) from z towards toZ against the load, first point of it in hitPos
+	protected bool TraceAlongZ(IEntity owner, IEntity load, float x, float y, float z, float toZ, out vector hitPos)
+	{
+		BaseWorld world = owner.GetWorld();
+		s_TraceLoad = load;
+
+		TraceParam param = new TraceParam();
+		param.Start = owner.CoordToParent(Vector(x, y, z));
+		param.End = owner.CoordToParent(Vector(x, y, toZ));
+		param.Flags = TraceFlags.ENTS;
+		param.TargetLayers = EPhysicsLayerDefs.FireGeometry;
+
+		float frac = world.TraceMove(param, IsPartOfLoad);
+		if (frac >= 1)
+		{
+			param.TargetLayers = EPhysicsLayerDefs.FireGeometry | EPhysicsLayerDefs.ViewGeometry | EPhysicsLayerDefs.VehicleSimple;
+			frac = world.TraceMove(param, IsPartOfLoad);
+		}
+
+		if (frac >= 1)
+			return false;
+
+		hitPos = Vector(x, y, z + (toZ - z) * frac);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! A lashing chain from a to b (trailer space), with the turnbuckle a third of the way down when
+	//! there is room for it (not in the middle, where the crossed chains meet)
+	protected void Chain(IEntity owner, vector a, vector b, bool tensioner)
+	{
+		vector dir = b - a;
+		float length = dir.Length();
+		if (length < 0.01)
+			return;
+
+		dir = dir / length;
+		if (!tensioner || length * 0.3 < TENSIONER_LENGTH * 0.5 + 0.1)
+		{
+			ChainLinks(owner, a, b);
+			return;
+		}
+
+		vector t0 = a + dir * (length * 0.3 - TENSIONER_LENGTH * 0.5);
+		vector t1 = t0 + dir * TENSIONER_LENGTH;
+		ChainLinks(owner, a, t0);
+		Place(owner, TensionerRes(), t0, dir, 1);
+		ChainLinks(owner, t1, b);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Chain pieces from a to b, a little longer or shorter than they are so they fit
+	protected void ChainLinks(IEntity owner, vector a, vector b)
+	{
+		vector dir = b - a;
+		float length = dir.Length();
+		if (length < 0.01)
+			return;
+
+		dir = dir / length;
+		int count = (int)Math.Round(length / CHAIN_PIECE);
+		if (count < 1)
+			count = 1;
+
+		float seg = length / count;
+		for (int i = 0; i < count; i++)
+		{
+			Place(owner, ChainRes(), a + dir * (seg * i), dir, seg / CHAIN_PIECE);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected Resource ChainRes()
+	{
+		if (!m_ChainRes)
+			m_ChainRes = Resource.Load(m_sChainPrefab);
+
+		return m_ChainRes;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected Resource TensionerRes()
+	{
+		if (!m_TensionerRes)
+			m_TensionerRes = Resource.Load(m_sTensionerPrefab);
+
+		return m_TensionerRes;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Spawns res at a (trailer space) along dir, stretched along its Z by scale
+	protected void Place(IEntity owner, Resource res, vector a, vector dir, float scale)
+	{
+		vector up = Vector(0, 1, 0) - dir * dir[1];
+		if (up.LengthSq() < 0.0001)
+			up = Vector(1, 0, 0) - dir * dir[0];
+
+		up.Normalize();
+		vector side = up * dir;
+
+		if (!res || !res.IsValid())
+			return;
+
+		IEntity piece = GetGame().SpawnEntityPrefabLocal(res, owner.GetWorld(), null);
+		if (!piece)
+			return;
+
+		owner.AddChild(piece, -1, EAddChildFlags.AUTO_TRANSFORM);
+		vector mat[4];
+		mat[0] = side;
+		mat[1] = up;
+		mat[2] = dir * scale;
+		mat[3] = a;
+		piece.SetLocalTransform(mat);
+		piece.Update();
+		m_aPieces.Insert(piece);
 	}
 
 	//------------------------------------------------------------------------------------------------

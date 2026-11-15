@@ -237,7 +237,7 @@ A trailer is a `GenericEntity` with `SST_SemiTrailerComponent`; its origin is th
 | Ability | What goes on the trailer | Example |
 | ------- | ------------------------ | ----------------------- |
 | Vehicle deck (load vehicles and helicopters, unload at the rear) | `SST_VehicleCarrierComponent`, a `UserActionContext` `carrier_ramp` at the rear with `SST_UnloadCarrierAction` on it | `SST_Semitrailer_Carrier.et`, `SST_Semitrailer_Lowboy.et` |
-| Straps for the load | `SST_CargoStrapComponent`, contexts `straps_fl/fr/rl/rr` with `SST_CargoStrapAction` | `SST_Semitrailer_Base.et` (framework) |
+| Straps or lashing chains for the load | `SST_CargoStrapComponent`, contexts `straps_fl/fr/rl/rr` with `SST_CargoStrapAction` (`m_iMode` 0 normal, 1 no visual straps, 2 can't come loose, 3 lashing chains) | `SST_Semitrailer_Base.et` (framework) |
 | Supplies | `SCR_ResourceComponent` like on the vanilla supply truck, `SST_SupplyCargoStorageComponent` for the item room (shrinks the more supplies are loaded) | `SST_Semitrailer_Supply.et` |
 | Fuel tank that refuels and burns | `SCR_FuelManagerComponent` in a slot (`m_sCargoComponent "SCR_FuelManagerComponent"` on the trailer), `SST_TankerDamageManagerComponent` | `SST_Semitrailer_Tanker.et` |
 | Rear tow hitch for a dolly | `SST_SemiTractorComponent` with `m_bTowHitch 1`, `SST_TowHitch.et` as child | `SST_Semitrailer_Base.et` (framework) |
@@ -260,6 +260,10 @@ The "Load onto trailer" action is on every vehicle: the framework overrides the 
 Loaded vehicles count into the trailer mass and can be strapped down with the trailer's straps. A trailer that loads from somewhere else than its rear end can inherit the component and override `DistanceToRamp` and `UnloadRearmost` (the Sd.Ah. 116 does that).
 
 > Another mod that overrides `Vehicle_Base.et` too (the C-130 mod does) changes the same `additionalActions` list. Check in game that the actions of both mods show up on a vehicle when they are loaded together.
+
+### Lashing chains
+
+"Lash down with chains" holds the loads with four chains each instead of straps: from low on the front and the rear of the load across to the other side of the deck ahead of and behind it, so the two chains at each end cross like on a rail flatcar. They go to the nearest ring when the trailer has rings, and every chain has a turnbuckle. Chains work loose like straps, only slower (`m_fChainWear`, default `0.25`). The chain piece and the turnbuckle are `m_sChainPrefab` and `m_sTensionerPrefab` on `SST_CargoStrapComponent`; a piece is 0.5 m long along +Z from its origin and is stretched a little to fit.
 
 ### Fuel tank
 

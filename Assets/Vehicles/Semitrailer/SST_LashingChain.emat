@@ -1,0 +1,12 @@
+MatPBRMulti {
+ SurfaceProperties "{CE9253778DD8FBDE}Common/Materials/Game/metal.gamemat"
+ Enabled_4 0
+ Enabled_3 0
+ Enabled_2 0
+ Color_1 0.127 0.127 0.127 1
+ BCR_1 "{35DFF427FFCD66ED}Assets/_SharedData/Metal/ST_Metal_Fine01_1m_BCR.edds"
+ NMO_1 "{0D074FB526BA3473}Assets/_SharedData/Metal/ST_Metal_Fine01_1m_NMO.edds"
+ DetNormal_1 0.321
+ Roughness_1 1.56
+ Metalness_1 0.698
+}

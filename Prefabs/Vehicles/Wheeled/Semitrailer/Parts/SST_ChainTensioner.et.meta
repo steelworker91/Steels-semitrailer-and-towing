@@ -1,0 +1,17 @@
+MetaFileClass {
+ Name "{8FED9BA238F7EE28}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_ChainTensioner.et"
+ Configurations {
+  EntityTemplateResourceClass PC {
+  }
+  EntityTemplateResourceClass XBOX_ONE : PC {
+  }
+  EntityTemplateResourceClass XBOX_SERIES : PC {
+  }
+  EntityTemplateResourceClass PS4 : PC {
+  }
+  EntityTemplateResourceClass PS5 : PC {
+  }
+  EntityTemplateResourceClass HEADLESS : PC {
+  }
+ }
+}

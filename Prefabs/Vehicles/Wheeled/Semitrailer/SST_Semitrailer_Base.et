@@ -161,6 +161,19 @@ GenericEntity {
      Duration 4
      m_iMode 2
     }
+    SST_CargoStrapAction "{60D42877649DDCF2}" {
+     ParentContextList {
+      "straps_fl"
+      "straps_fr"
+      "straps_rl"
+      "straps_rr"
+     }
+     UIInfo UIInfo "{C50578005EB11A4B}" {
+      Name "Lash down with chains"
+     }
+     Duration 6
+     m_iMode 3
+    }
     SST_CargoStrapAction "{F8E2C0572F9CCE2B}" {
      ParentContextList {
       "straps_fl"

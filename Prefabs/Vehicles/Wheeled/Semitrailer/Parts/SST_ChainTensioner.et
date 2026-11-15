@@ -1,0 +1,10 @@
+GenericEntity {
+ ID "27524A08A5CE3BBD"
+ components {
+  MeshObject "{6AB5865DB53088D1}" {
+   Object "{F928CF69DEACDB92}Assets/Vehicles/Semitrailer/SST_ChainTensioner.xob"
+  }
+  Hierarchy "{45874CB2E9EECB16}" {
+  }
+ }
+}

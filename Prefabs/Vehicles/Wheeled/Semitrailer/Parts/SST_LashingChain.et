@@ -1,0 +1,10 @@
+GenericEntity {
+ ID "B66B36E1FE7EABA6"
+ components {
+  MeshObject "{CEAD2E96F7850BC8}" {
+   Object "{CB4951AEC23B80C9}Assets/Vehicles/Semitrailer/SST_LashingChain.xob"
+  }
+  Hierarchy "{A0DD183E1014F167}" {
+  }
+ }
+}

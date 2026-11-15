@@ -100,6 +100,14 @@ class SST_VehicleCarrierComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Usable deck along the trailer, trailer space [m]
+	void GetDeckSpan(out float front, out float rear)
+	{
+		front = m_fDeckFront;
+		rear = m_fDeckRear;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	int GetLoadedCount()
 	{
 		return m_aLoaded.Count();
