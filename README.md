@@ -1,13 +1,16 @@
 # Steel's Semitrailer and Towing (framework)
 
-Semitrailers, dollies and tow hitches for Arma Reforger trucks. The framework contains the scripts, the fifth wheel and tow hitch models and one flatbed semitrailer with an M923A1 tractor.
-More trailers, the Soviet set and tow hitches for the vanilla trucks are in **SSTTExpanded**.
+Semitrailers, dollies and tow hitches for Arma Reforger trucks. The framework contains **all the scripts**, the fifth wheel and tow hitch models and one flatbed semitrailer with an M923A1 tractor.
+**SSTTExpanded** has no scripts of its own, only models, textures, prefabs and configs: more trailers (carrier, supply, fuel, lowbed, dolly), the Soviet, FIA and MERDC sets and tow hitches for the vanilla trucks.
 
-This readme is for modders who want their trucks to pull the trailers:
+So a mod that only depends on the framework can use everything the trailers can do: vehicle decks, supply boxes, fuel tanks, straps. Nothing of SSTTExpanded is needed for that.
+
+This readme is for modders who want their trucks to pull the trailers, or who make their own trailers:
 
 - [A. Adding the framework to an existing truck mod](#a-adding-the-framework-to-an-existing-truck-mod)
   (someone else's mod, or one of yours that is already published and should stay as it is)
 - [B. Building it into your own truck mod](#b-building-it-into-your-own-truck-mod)
+- [C. Your own trailers](#c-your-own-trailers)
 
 Both use the same two pieces on the truck: the `SST_SemiTractorComponent` and the fifth wheel model.
 
@@ -227,6 +230,43 @@ If your truck has no `tow_hook` context, add a `UserActionContext` with that nam
 
 ---
 
+## C. Your own trailers
+
+A trailer is a `GenericEntity` with `SST_SemiTrailerComponent`; its origin is the kingpin. `SST_Semitrailer_Base.et` is the example. The framework scripts give it more abilities through components on the trailer prefab:
+
+| Ability | What goes on the trailer | Example |
+| ------- | ------------------------ | ----------------------- |
+| Vehicle deck (load vehicles and helicopters, unload at the rear) | `SST_VehicleCarrierComponent`, a `UserActionContext` `carrier_ramp` at the rear with `SST_UnloadCarrierAction` on it | `SST_Semitrailer_Carrier.et`, `SST_Semitrailer_Lowboy.et` |
+| Straps for the load | `SST_CargoStrapComponent`, contexts `straps_fl/fr/rl/rr` with `SST_CargoStrapAction` | `SST_Semitrailer_Base.et` (framework) |
+| Supplies | `SCR_ResourceComponent` like on the vanilla supply truck, `SST_SupplyCargoStorageComponent` for the item room (shrinks the more supplies are loaded) | `SST_Semitrailer_Supply.et` |
+| Fuel tank that refuels and burns | `SCR_FuelManagerComponent` in a slot (`m_sCargoComponent "SCR_FuelManagerComponent"` on the trailer), `SST_TankerDamageManagerComponent` | `SST_Semitrailer_Tanker.et` |
+| Rear tow hitch for a dolly | `SST_SemiTractorComponent` with `m_bTowHitch 1`, `SST_TowHitch.et` as child | `SST_Semitrailer_Base.et` (framework) |
+
+### Vehicle deck
+
+The "Load onto trailer" action is on every vehicle: the framework overrides the vanilla `Vehicle_Base.et` (and `VehicleSalvageActionEntity.et` for wrecks). It shows up next to a trailer with `SST_VehicleCarrierComponent` and puts the vehicle on the deck, front first. `SST_UnloadCarrierAction` at the rear takes the rearmost one off again.
+
+| Attribute | Default | What it does |
+| --------- | ------- | ------------ |
+| `m_fDeckY` | `0.52` | Deck height, trailer space [m] |
+| `m_fDeckFront` / `m_fDeckRear` | `1.05` / `-10.7` | Usable deck, from behind the headboard to in front of the ramps [m] |
+| `m_fMaxWidth` | `3.4` | Widest vehicle that is accepted [m] |
+| `m_fRearOverhang` | `4` | How far the last vehicle may stick out behind the deck [m] |
+| `m_fGap` | `0.3` | Gap between the vehicles [m] |
+| `m_fLoadRange` | `25` | A vehicle has to be this close to the rear of the trailer [m] |
+| `m_fMaxMass` | `30000` | Max load [kg] |
+| `m_fMaxSpeed` | `1` | Max speed of the trailer for loading and unloading [m/s] |
+
+Loaded vehicles count into the trailer mass and can be strapped down with the trailer's straps. A trailer that loads from somewhere else than its rear end can inherit the component and override `DistanceToRamp` and `UnloadRearmost` (the Sd.Ah. 116 does that).
+
+> Another mod that overrides `Vehicle_Base.et` too (the C-130 mod does) changes the same `additionalActions` list. Check in game that the actions of both mods show up on a vehicle when they are loaded together.
+
+### Fuel tank
+
+`SST_TankerDamageManagerComponent` swaps in burnt materials when the trailer is destroyed. The materials belong to the trailer's model, so the prefab sets them: `m_sTankWreckMaterial`, `m_sTrailerWreckMaterial`, `m_sHubWreckMaterial`, `m_sWheelWreckMaterial`, `m_sDecalWreckMaterial`. Empty = that part stays as it is.
+
+---
+
 ## Testing
 
 1. Place the tractor and a trailer (Game Master → Systems → Steel's Trucks).
@@ -244,3 +284,4 @@ If your truck has no `tow_hook` context, add a `UserActionContext` with that nam
 | Fifth wheel model not visible                | Slot added to a new `SlotManagerComponent` instead of the truck's own one, or the prefab path is wrong.   |
 | Tractor missing in the Game Master           | Not in an entity catalog (child prefabs need an entry), or the catalog override uses the wrong list GUID. |
 | "Missing addon" when loading                 | The compat addon's dependencies are not loaded: framework and truck mod must be loaded too.               |
+| No "Load onto trailer" on a vehicle          | The vehicle has none of the contexts the action sits on (`push_front`, `push_rear`, `hood_repair`, ...), or another mod's `Vehicle_Base.et` override replaced the action list. |
