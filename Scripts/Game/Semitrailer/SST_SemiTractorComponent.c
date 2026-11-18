@@ -7,9 +7,22 @@
 //
 // Every machine runs this behind the tractor it sees, nothing about the pose goes over the network.
 // The trailer body is kinematic everywhere, it only collides.
-// The weight on the kingpin presses the tractor down at the fifth wheel, straight down along the
-// tractor's own up axis. It never pushes or pulls the tractor along the road, braking and
-// accelerating stay as they are. Drawbar trailers carry their weight themselves.
+// The weight on the kingpin is added to the mass of the tractor while the trailer is coupled: the
+// tractor sits deeper, leans more and is slower to get going and to stop, more so with a load on the
+// trailer. Pushing it down with a force every step made it jump: the vehicle is predicted on the
+// driver's machine and corrected by the server, and the two never apply a script force in step.
+// A mass is the same on both. Drawbar trailers carry their weight themselves.
+// The rest of the train is not in the tractor's mass, its suspension could not carry it. The engine
+// pulls less instead, by as much as the whole train is heavier than what the tractor's mass says, the
+// way vanilla lowers the pull of a damaged engine.
+//
+// Braking: there is no way to change the brakes of a vehicle from script. While the driver brakes,
+// the tractor gets back a part of the speed it lost in the frame instead, as if the part of the train
+// that its trailers don't brake themselves pushed it.
+//
+// The trailer has no physics that could stop it at a house. Its body is checked against buildings,
+// walls and rocks every frame instead: it slides off a little where it can, otherwise the tractor is
+// held where the trailer was still free. What a truck knocks over (trees, fences) does not stop it.
 //
 // Coupling works like on a real fifth wheel: back the tractor under a parked trailer and the jaws
 // lock once the kingpin is on the plate. Uncoupling is done at the trailer (user action), the trailer
@@ -62,8 +75,17 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	[Attribute("", UIWidgets.EditBox, "Tow hook from this action context of the vehicle (vanilla trucks: tow_hook). With Tow hitch it replaces the fifth wheel position, without it the tractor takes drawbar trailers there as well. Empty = none", category: "Coupling")]
 	protected string m_sHitchContext;
 
-	[Attribute("0.8", UIWidgets.EditBox, "Most a semitrailer presses down on the fifth wheel, times the tractor's own mass", category: "Coupling")]
+	[Attribute("0.8", UIWidgets.EditBox, "Most a semitrailer adds to the mass of the tractor, times the tractor's own mass", category: "Coupling")]
 	protected float m_fMaxKingpinLoad;
+
+	[Attribute("1", UIWidgets.EditBox, "How much the mass of the train slows the tractor down: 1 = it pulls away like a vehicle of that mass, 0 = the train costs nothing", params: "0 1", category: "Coupling")]
+	protected float m_fTrainDrag;
+
+	[Attribute("0.3", UIWidgets.EditBox, "How much of the train that is not on the tractor pushes it while braking: 0 = the trailers brake themselves completely, 1 = they have no brakes at all", params: "0 1", category: "Coupling")]
+	protected float m_fTrainPush;
+
+	[Attribute("1", UIWidgets.CheckBox, "The trailer stops at buildings, walls and rocks and holds the tractor there", category: "Coupling")]
+	protected bool m_bObstacles;
 
 	protected vector m_vHitch;			// tow hook of a tractor that also has a fifth wheel
 	protected bool m_bHasHitch;
@@ -92,11 +114,37 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	protected vector m_vKingOffset;		// eases the kingpin onto the plate after coupling
 	protected float m_fScanTimer;
 	protected float m_fTippedTime;
-	protected float m_fPressMass;		// weight of the trailer on the fifth wheel, pressed on the tractor every physics step [kg]
+	protected float m_fOwnMass;			// mass of the tractor without a trailer [kg]
+	protected float m_fCarriedMass;		// weight of the trailer on the fifth wheel that is in the tractor's mass now [kg]
+	protected float m_fPull = 1;		// part of its pull the engine has left with the train behind it
+	protected bool m_bEngineChecked;
+	protected VehicleWheeledSimulation m_Engine;
+	protected SCR_VehicleDamageManagerComponent m_EngineDamage;
 	protected ref array<float> m_aComp = {};
 	protected ref array<float> m_aWheelGround = {};
 	protected ref array<float> m_aWheelGroundLast = {};	// ground under the wheels in the frame before
 	protected float m_fFrameDone = 1;
+
+	// braking
+	protected bool m_bBraking;				// braked in the frame before, the speed below is from then
+	protected float m_fBrakeSpeed;			// speed along the tractor after that frame [m/s]
+
+	// curves
+	protected bool m_bCurveKnown;
+	protected vector m_vCurveBogie;			// bogie and heading of the frame before
+	protected vector m_vCurveHeading;
+	protected float m_fLateral;				// sideways acceleration of the trailer in the curve, + = pushed to the left [m/s2]
+	protected float m_fLeanArm;				// height of its centre of mass above the axles [m]
+
+	// obstacles
+	protected bool m_bFreeKnown;			// the trailer stood free at the pose below
+	protected vector m_vFreeKingpin;
+	protected vector m_vFreeHeading;
+	protected vector m_vCheckedKingpin;		// pose of the last check
+	protected vector m_vCheckedHeading;
+	protected int m_iSlideSide = 1;
+	protected float m_fTrailerMass;			// trailer with its load, this frame [kg]
+	protected float m_fStaticCompression;	// where its springs carry that mass [m]
 	protected float m_fTeleportDist = TELEPORT_DIST;
 	protected ref array<float> m_aPointGround = {};
 	protected ref array<float> m_aPointPen = {};
@@ -110,8 +158,14 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	static const float LIGHT_INTERVAL = 0.1;
 	static const float MAX_STEP = 0.004;
 	static const float GRAVITY = 9.81;
+	static const float MASS_STEP = 100;			// the tractor's mass follows the load in steps of this [kg]
 	static const float TELEPORT_DIST = 6;
 	static const float NO_GROUND = -1000000;
+	static const float IN_OBSTACLE = -1000;		// marks a body point that is inside a wall or under a roof
+	static const float MAX_LATERAL = 5;			// more sideways acceleration than this and the tyres would slide [m/s2]
+	static const float SLIDE_RATE = 30;			// a trailer against a wall turns about its kingpin at most this fast [deg/s]
+	static const float SLIDE_STEP = 0.5;		// in steps of [deg]
+	static const float HOLD_SPEED = 0.5;		// a held tractor goes back to where the trailer was free at most this fast [m/s]
 	static const float GROUND_EDGE = 0.5;		// ground that changes more than this in a frame is an edge, not a slope [m]
 	static const float TIPPED_UP = 0.34;		// up axis this low = more than ~70 deg over
 	static const float TIPPED_TIME = 0.5;
@@ -121,7 +175,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	{
 		super.OnPostInit(owner);
 
-		SetEventMask(owner, EntityEvent.INIT | EntityEvent.POSTFRAME | EntityEvent.SIMULATE);
+		SetEventMask(owner, EntityEvent.INIT | EntityEvent.POSTFRAME);
 
 		if (GetGame() && GetGame().InPlayMode())
 			s_aTractors.Insert(this);
@@ -274,6 +328,8 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		m_Trailer = null;
 		m_TrailerComp = null;
 		m_bHasState = false;
+		m_bFreeKnown = false;
+		m_bCurveKnown = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -480,21 +536,6 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	//! would hang one frame behind it. That is speed * frame time, half a metre at 100 km/h and
 	//! changing with every frame, so the trailer jerks against the truck at speed.
 	//------------------------------------------------------------------------------------------------
-	//! The trailer weight goes on in every physics step, once a frame it jolts the truck up and down
-	override void EOnSimulate(IEntity owner, float timeSlice)
-	{
-		if (m_fPressMass <= 0)
-			return;
-
-		Physics phys = owner.GetPhysics();
-		if (!phys)
-			return;
-
-		vector down = owner.GetTransformAxis(1) * -1;
-		phys.ApplyImpulseAt(owner.CoordToParent(m_vCouple), down * (m_fPressMass * GRAVITY * timeSlice));
-	}
-
-	//------------------------------------------------------------------------------------------------
 	override void EOnPostFrame(IEntity owner, float timeSlice)
 	{
 		// moved by the tractor in front, which updates us right after that
@@ -522,10 +563,12 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	protected void Tow(IEntity owner, float timeSlice)
 	{
-		m_fPressMass = 0;
 		IEntity trailer = GetTrailer();
 		if (!trailer)
 		{
+			CarryMass(owner, 0);
+			SetPull(owner, 1);
+			m_bBraking = false;
 			if (Replication.IsServer() && GetGame().InPlayMode())
 				ScanForTrailer(owner, timeSlice);
 
@@ -571,6 +614,11 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		// a fast truck covers several metres in a long frame, that is no teleport
 		m_fTeleportDist = TELEPORT_DIST + GetSpeed() * timeSlice * 1.5;
 
+		// the load does not change within a frame
+		m_fTrailerMass = m_TrailerComp.GetMass();
+		m_fStaticCompression = m_TrailerComp.GetStaticCompression();
+		m_fLeanArm = m_TrailerComp.GetLeanArm();
+
 		if (timeSlice > 0)
 		{
 			int steps = Math.Ceil(timeSlice / MAX_STEP);
@@ -589,15 +637,196 @@ class SST_SemiTractorComponent : ScriptGameComponent
 			}
 		}
 
-		m_fPressMass = PressMass(owner);
+		StopAtObstacles(owner, trailer, timeSlice);
+		FeelCurve(timeSlice);
+
+		CarryMass(owner, KingpinMass(owner));
+		SetPull(owner, TrainPull(owner));
+		PushWhileBraking(owner);
 
 		ApplyPose(owner, trailer);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! The weight on the kingpin that goes on the tractor (EOnSimulate), along its down axis only.
-	//! Only where the tractor is simulated, like the vanilla push vehicle action, 0 elsewhere.
-	protected float PressMass(IEntity owner)
+	//! How hard the curve the bogie drives pushes the trailer sideways: its speed times how fast it
+	//! turns. Smoothed, the heading of one frame alone is too rough.
+	protected void FeelCurve(float timeSlice)
+	{
+		if (!m_bHasState || timeSlice <= 0)
+			return;
+
+		if (m_bCurveKnown)
+		{
+			vector moved = m_vBogie - m_vCurveBogie;
+			moved[1] = 0;
+			float speed = vector.Dot(moved, m_vHeading) / timeSlice;
+			float turn = SignedAngle(m_vCurveHeading, m_vHeading) / timeSlice;
+			float lateral = Math.Clamp(speed * turn, -MAX_LATERAL, MAX_LATERAL);
+			m_fLateral += (lateral - m_fLateral) * Math.Clamp(timeSlice * 5, 0, 1);
+		}
+		else
+		{
+			m_fLateral = 0;
+		}
+
+		m_bCurveKnown = true;
+		m_vCurveBogie = m_vBogie;
+		m_vCurveHeading = m_vHeading;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Keeps the trailer out of buildings, walls and rocks. Where turning it a little about the kingpin
+	//! gets it free it slides along, otherwise the tractor is held where the trailer was last free.
+	protected void StopAtObstacles(IEntity owner, IEntity trailer, float timeSlice)
+	{
+		if (!m_bObstacles || !m_bHasState)
+			return;
+
+		// nothing moved since the last look
+		vector kingpin = owner.CoordToParent(m_vCouple) + m_vKingOffset;
+		if (vector.DistanceSq(kingpin, m_vCheckedKingpin) < 0.000025 && vector.Dot(m_vHeading, m_vCheckedHeading) > 0.999999)
+			return;
+
+		m_vCheckedKingpin = kingpin;
+		m_vCheckedHeading = m_vHeading;
+
+		vector mins, maxs;
+		m_TrailerComp.GetBodyBox(mins, maxs);
+		if (!IsBlocked(owner, trailer, kingpin, m_vHeading, mins, maxs))
+		{
+			RememberFree(kingpin);
+			return;
+		}
+
+		// slide off: the nearest heading on either side that is free, the side of the last time first
+		vector tractorFwd = owner.GetTransformAxis(2);
+		tractorFwd[1] = 0;
+		tractorFwd.Normalize();
+		float maxArt = m_fMaxArticulation * Math.DEG2RAD;
+		float length = m_TrailerComp.GetKingpinToBogie();
+
+		int turns = Math.Ceil(SLIDE_RATE * timeSlice / SLIDE_STEP);
+		for (int i = 1; i <= turns; i++)
+		{
+			for (int k = 0; k < 2; k++)
+			{
+				int side = m_iSlideSide;
+				if (k == 1)
+					side = -side;
+
+				vector heading = RotateY(m_vHeading, side * i * SLIDE_STEP * Math.DEG2RAD);
+				if (Math.AbsFloat(SignedAngle(tractorFwd, heading)) > maxArt)
+					continue;
+
+				if (IsBlocked(owner, trailer, kingpin, heading, mins, maxs))
+					continue;
+
+				m_iSlideSide = side;
+				m_vHeading = heading;
+				m_vBogie = kingpin - heading * length;
+				m_vCheckedHeading = heading;
+				RememberFree(kingpin);
+				return;
+			}
+		}
+
+		if (!m_bFreeKnown)
+			return;
+
+		vector away = kingpin - m_vFreeKingpin;
+		away[1] = 0;
+		float dist = away.Length();
+		if (dist < 0.002)
+			return;
+
+		// something got in the way where the trailer stood free (a wreck, a door): nowhere to go back to
+		if (IsBlocked(owner, trailer, m_vFreeKingpin, m_vFreeHeading, mins, maxs))
+		{
+			m_bFreeKnown = false;
+			return;
+		}
+
+		HoldTractor(owner, kingpin, away / dist, dist, timeSlice);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RememberFree(vector kingpin)
+	{
+		m_bFreeKnown = true;
+		m_vFreeKingpin = kingpin;
+		m_vFreeHeading = m_vHeading;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Is something solid in the body of the trailer when it stands at this kingpin with this heading
+	protected bool IsBlocked(IEntity tractor, IEntity trailer, vector kingpin, vector heading, vector mins, vector maxs)
+	{
+		vector pose[4];
+		SST_SemiTrailerComponent.MakePose(heading, m_fPitch, m_fRoll, kingpin, pose);
+
+		// box at a place, as vanilla checks whether a vehicle fits where it is to spawn
+		TraceOBB param = new TraceOBB();
+		param.Mat[0] = pose[0];
+		param.Mat[1] = pose[1];
+		param.Mat[2] = pose[2];
+		param.Start = kingpin;
+		param.Mins = mins;
+		param.Maxs = maxs;
+		param.Flags = TraceFlags.ENTS;
+		param.LayerMask = EPhysicsLayerDefs.VehicleCast;
+
+		s_TraceTractor = tractor;
+		s_TraceTrailer = trailer;
+		s_TraceTowed = m_TrailerComp.GetTowedTrailer();
+		float result = tractor.GetWorld().TracePosition(param, ObstacleFilter);
+		return result < 0 || param.TraceEnt != null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Only what stands firm: no vehicles, trailers or people, and nothing a truck knocks over
+	protected static bool ObstacleFilter(notnull IEntity e)
+	{
+		IEntity root = e.GetRootParent();
+		if (root == s_TraceTractor || root == s_TraceTrailer || (s_TraceTowed && root == s_TraceTowed))
+			return false;
+
+		if (ChimeraCharacter.Cast(root) || Vehicle.Cast(root) || root.FindComponent(SST_SemiTrailerComponent))
+			return false;
+
+		// trees, fences, poles
+		if (SCR_DestructibleEntity.Cast(e) || e.FindComponent(SCR_DestructionDamageManagerComponent))
+			return false;
+
+		Physics phys = e.GetPhysics();
+		return !phys || !phys.IsDynamic();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The trailer is against something and can't give way: the vehicle at the front of the train
+	//! loses the speed that takes the kingpin further in and eases back to where the trailer was
+	//! free. Only where that vehicle is simulated, like the vanilla push vehicle action.
+	protected void HoldTractor(IEntity owner, vector kingpin, vector away, float dist, float timeSlice)
+	{
+		IEntity head = GetChainHead(owner);
+		Physics phys = head.GetPhysics();
+		if (!phys || !phys.IsDynamic())
+			return;
+
+		RplComponent rpl = RplComponent.Cast(head.FindComponent(RplComponent));
+		if (!rpl || rpl.Role() != RplRole.Authority && !rpl.IsOwnerProxy())
+			return;
+
+		float back = Math.Min(dist / Math.Max(timeSlice, 0.001) * 0.2, HOLD_SPEED);
+		float into = vector.Dot(phys.GetVelocityAt(kingpin), away);
+		if (into <= -back)
+			return;
+
+		phys.SetVelocity(phys.GetVelocity() - away * (into + back));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The weight of our semitrailer on the kingpin [kg], no more than the tractor is allowed to take
+	protected float KingpinMass(IEntity owner)
 	{
 		if (m_TrailerComp.HasDrawbar())
 			return 0;
@@ -606,11 +835,138 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		if (!phys || !phys.IsDynamic())
 			return 0;
 
+		float ownMass = m_fOwnMass;
+		if (m_fCarriedMass == 0)
+			ownMass = phys.GetMass();
+
+		return Math.Min(m_TrailerComp.GetKingpinMass(), ownMass * m_fMaxKingpinLoad);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Makes the tractor heavier by the weight it carries on the fifth wheel, 0 gives it its own mass
+	//! back. Runs on every machine, so the driver's prediction and the server agree.
+	protected void CarryMass(IEntity owner, float mass)
+	{
+		if (mass == m_fCarriedMass)
+			return;
+
+		// supplies go in and out a few at a time
+		if (mass > 0 && Math.AbsFloat(mass - m_fCarriedMass) < MASS_STEP)
+			return;
+
+		Physics phys = owner.GetPhysics();
+		if (!phys || !phys.IsDynamic())
+			return;
+
+		if (m_fCarriedMass == 0)
+			m_fOwnMass = phys.GetMass();
+
+		m_fCarriedMass = mass;
+		phys.SetMass(m_fOwnMass + mass);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Part of its pull the engine keeps: the mass the tractor moves by its own physics against the
+	//! mass of the whole train
+	protected float TrainPull(IEntity owner)
+	{
+		Physics phys = owner.GetPhysics();
+		if (!phys || !phys.IsDynamic())
+			return 1;
+
+		float ownMass = m_fOwnMass;
+		if (m_fCarriedMass == 0)
+			ownMass = phys.GetMass();
+
+		float moved = ownMass + m_fCarriedMass;
+		float train = ownMass + m_TrailerComp.GetTrainMass();
+		if (train <= moved)
+			return 1;
+
+		float pull = 1 - m_fTrainDrag * (1 - moved / train);
+		return Math.Round(pull * 100) * 0.01;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Braking takes longer with a train: of the speed the tractor lost in this frame it gets a part
+	//! back, by the mass its trailers don't brake themselves. Only where the tractor is simulated.
+	protected void PushWhileBraking(IEntity owner)
+	{
+		Physics phys = owner.GetPhysics();
+		FindEngine(owner);
+		if (m_fTrainPush <= 0 || !phys || !phys.IsDynamic() || !m_Engine || !m_Engine.IsValid())
+		{
+			m_bBraking = false;
+			return;
+		}
+
 		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
 		if (!rpl || rpl.Role() != RplRole.Authority && !rpl.IsOwnerProxy())
-			return 0;
+			return;
 
-		return Math.Min(m_TrailerComp.GetKingpinMass(), phys.GetMass() * m_fMaxKingpinLoad);
+		vector forward = owner.GetTransformAxis(2);
+		vector velocity = phys.GetVelocity();
+		float speed = vector.Dot(velocity, forward);
+
+		bool braking = m_Engine.GetBrake() > 0.05 && !m_Engine.IsHandbrakeOn();
+		bool wasBraking = m_bBraking;
+		float before = m_fBrakeSpeed;
+		m_bBraking = braking;
+		m_fBrakeSpeed = speed;
+
+		// only while it rolls and really got slower in the same direction
+		if (!braking || !wasBraking || Math.AbsFloat(before) < 0.5 || speed * before <= 0 || Math.AbsFloat(speed) >= Math.AbsFloat(before))
+			return;
+
+		float ownMass = m_fOwnMass;
+		if (m_fCarriedMass == 0)
+			ownMass = phys.GetMass();
+
+		float moved = ownMass + m_fCarriedMass;
+		float pushing = (m_TrailerComp.GetTrainMass() - m_fCarriedMass) * m_fTrainPush;
+		if (pushing <= 0)
+			return;
+
+		float kept = before + (speed - before) * moved / (moved + pushing);
+		phys.SetVelocity(velocity + forward * (kept - speed));
+		m_fBrakeSpeed = kept;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void FindEngine(IEntity owner)
+	{
+		if (m_bEngineChecked)
+			return;
+
+		m_bEngineChecked = true;
+		m_Engine = VehicleWheeledSimulation.Cast(owner.FindComponent(VehicleWheeledSimulation));
+		m_EngineDamage = SCR_VehicleDamageManagerComponent.Cast(owner.FindComponent(SCR_VehicleDamageManagerComponent));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Lowers peak torque and power of the engine like vanilla does for engine damage
+	//! (SCR_VehicleDamageManagerComponent.SetEngineEfficiency), on top of that damage. Vanilla writes
+	//! the two again when the damage changes, so this looks at them every frame while a train is on.
+	protected void SetPull(IEntity owner, float pull)
+	{
+		if (pull == 1 && m_fPull == 1)
+			return;
+
+		FindEngine(owner);
+		m_fPull = pull;
+		if (!m_Engine || !m_Engine.IsValid())
+			return;
+
+		float efficiency = pull;
+		if (m_EngineDamage)
+			efficiency *= m_EngineDamage.GetEngineEfficiency();
+
+		float torque = efficiency * m_Engine.EngineGetPeakTorque();
+		if (Math.AbsFloat(m_Engine.EngineGetPeakTorqueState() - torque) < 0.5)
+			return;
+
+		m_Engine.EngineSetPeakTorqueState(torque);
+		m_Engine.EngineSetPeakPowerState(efficiency * m_Engine.EngineGetPeakPower());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -639,7 +995,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		float radius = m_TrailerComp.GetWheelRadius();
 		float rest = m_TrailerComp.GetRestCompression();
 		float travel = m_TrailerComp.GetTravel();
-		float mass = m_TrailerComp.GetMass();
+		float mass = m_fTrailerMass;
 
 		vector kingpin = tractor.CoordToParent(m_vCouple);
 		vector tractorFwd = tractor.GetTransformAxis(2);
@@ -687,8 +1043,10 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		float tractorRoll = Math.Atan2(-vector.Dot(plateUp, right), plateUp[1]);
 
 		// wheels
+		// The springs carry the trailer at its static compression: at rest height when empty, deeper
+		// with a load on it. A heavier trailer sits lower and swings slower.
 		float bogieMass = mass * m_TrailerComp.GetAxleShare();
-		float spring = bogieMass * GRAVITY / (wheelCount * Math.Max(rest, 0.01));
+		float spring = bogieMass * GRAVITY / (wheelCount * Math.Max(m_fStaticCompression, 0.01));
 		float damping = m_TrailerComp.GetDamping();
 		float damper = 2 * damping * Math.Sqrt(spring * bogieMass / wheelCount);
 		float sinPitch = Math.Sin(m_fPitch);
@@ -725,8 +1083,17 @@ class SST_SemiTractorComponent : ScriptGameComponent
 			float axleY = m_fAxleY + along * sinPitch + side * sinRoll;
 			if (traceWheels)
 			{
+				float traced = GroundY(tractor, trailer, pos, axleY);
+
+				// Higher than the middle of the wheel: that is a wall, a rock or a hay bale the wheel
+				// got into, nothing it could roll onto. The wheel stays on the ground it had.
+				float before = m_aWheelGround[i];
+				float wheelCentre = axleY - rest + Math.Clamp(m_aComp[i], 0, travel);
+				if (before > NO_GROUND && traced > wheelCentre && traced - before > GROUND_EDGE)
+					traced = before;
+
 				m_aWheelGroundLast[i] = m_aWheelGround[i];
-				m_aWheelGround[i] = GroundY(tractor, trailer, pos, axleY);
+				m_aWheelGround[i] = traced;
 			}
 
 			float ground = m_aWheelGround[i];
@@ -799,6 +1166,15 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 			float pen = m_aPointGround[i] - pos[1];
 			float penPrev = m_aPointPen[i];
+
+			// A point that is deep under something all at once went into a wall or under a roof.
+			// That is not ground: it does not lift the trailer until the point is out of it again.
+			if (pen > 0 && (penPrev == IN_OBSTACLE || (penPrev <= 0 && pen > GROUND_EDGE)))
+			{
+				m_aPointPen[i] = IN_OBSTACLE;
+				continue;
+			}
+
 			m_aPointPen[i] = pen;
 			if (pen <= 0)
 				continue;
@@ -821,10 +1197,10 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		m_fAxleVel += (force / bogieMass - GRAVITY) * dt;
 		m_fAxleY += m_fAxleVel * dt;
 
-		// got stuck in the ground or something went wrong, start over
+		// got stuck in the ground or something went wrong: back onto the ground, where the bogie is
 		if (maxComp > 1 || Math.AbsFloat(m_fAxleVel) > 25 || Math.AbsFloat(m_fRollVel) > 20)
 		{
-			ResetState(tractor, kingpin, tractorFwd, length, radius, wheelCount);
+			SettleAxle(radius);
 			return;
 		}
 
@@ -845,6 +1221,10 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		float rollSpring = mass * GRAVITY * halfTrack * 3;
 		float rollDamper = 2 * damping * Math.Sqrt(rollSpring * inertia);
 		torque += rollSpring * (tractorRoll - m_fRoll) - rollDamper * m_fRollVel;
+
+		// in a curve the mass wants to go straight on and leans the trailer outwards, the more the
+		// heavier and the higher the load
+		torque += m_fLateral * mass * m_fLeanArm;
 
 		m_fRollVel += torque / inertia * dt;
 		m_fRoll += m_fRollVel * dt;
@@ -900,6 +1280,38 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		}
 
 		m_bHasState = true;
+		m_bFreeKnown = false;
+		m_bCurveKnown = false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Puts the axle on the ground under its wheels and stops it. The bogie stays where it is: lining
+	//! the trailer up behind the tractor (ResetState) is for a teleport, in a narrow lane it made the
+	//! trailer jump straight.
+	protected void SettleAxle(float radius)
+	{
+		float sum = 0;
+		int count = 0;
+		foreach (float ground : m_aWheelGround)
+		{
+			if (ground <= NO_GROUND)
+				continue;
+
+			sum += ground;
+			count++;
+		}
+
+		if (count > 0)
+			m_fAxleY = sum / count + radius;
+
+		m_fAxleVel = 0;
+		m_fRollVel = 0;
+
+		float rest = m_TrailerComp.GetRestCompression();
+		for (int i = 0, n = m_aComp.Count(); i < n; i++)
+		{
+			m_aComp[i] = rest;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -928,6 +1340,8 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		}
 
 		m_bHasState = true;
+		m_bFreeKnown = false;
+		m_bCurveKnown = false;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -49,9 +49,12 @@ Both use the same two pieces on the truck: the `SST_SemiTractorComponent` and th
 | `m_fHandCoupleRadius`        | `0`           | Distance for coupling a drawbar trailer (dolly) by hand, 0 = what the action allows [m].                                                                                                  |
 | `m_bTowHitch`                | off           | The truck has a tow hitch instead of a fifth wheel: only drawbar trailers (dollies) couple.                                                                                               |
 | `m_sHitchContext`            | empty         | Action context that marks the tow hook (vanilla trucks: `tow_hook`). With a fifth wheel as well, the truck takes a dolly on the hook and a semitrailer on the fifth wheel, one at a time. |
-| `m_fMaxKingpinLoad`          | `0.8`         | Most a semitrailer presses down on the fifth wheel, times the truck's own physics mass (Ural 4320: 7062 kg).                                                                            |
+| `m_fMaxKingpinLoad`          | `0.8`         | Most a semitrailer adds to the mass of the truck, times the truck's own physics mass (M923A1: 8071 kg, Ural 4320: 7062 kg). |
+| `m_fTrainDrag`               | `1`           | How much the mass of the whole train slows the truck down. `1` = the engine pulls away like in a vehicle of that mass, `0` = only the weight on the fifth wheel counts. |
+| `m_fTrainPush`               | `0.3`         | Braking with a train: how much of the mass that is not on the truck pushes it while the driver brakes. `0` = the trailers brake themselves completely, `1` = they have no brakes. The brakes of a vehicle can't be changed from script, so the truck gets a part of the speed it lost back every frame. |
+| `m_bObstacles`               | on            | The trailer stops at buildings, walls and rocks: it slides off where a small turn about the kingpin frees it, otherwise the truck is held there. Trees, fences and other things a truck knocks over don't stop it. |
 
-With `m_fKingpinLoad` above 0 on the trailer (default 0 = off), the weight on the kingpin (trailer mass incl. load × (1 − `m_fAxleShare`) × `m_fKingpinLoad`) presses the truck down at the fifth wheel, along the truck's own down axis only. It never pushes the truck when braking or holds it back when accelerating. It is off by default: the vanilla truck suspensions are damped very little (Ural 4320 rear: about 0.15 of critical) and start to bounce with that weight on them. Drawbar trailers (dollies) don't press on the truck. How much the trailer's own suspension and roll are damped is `m_fDamping` on `SST_SemiTrailerComponent` (default `0.7`, 1 = no bouncing at all).
+While a semitrailer is coupled, the weight on its kingpin (trailer mass incl. load × (1 − `m_fAxleShare`) × `m_fKingpinLoad`, default 1) is added to the physics mass of the truck. The truck sits deeper, leans more and takes longer to speed up and to stop, more so with a loaded trailer. Uncoupled it has its own mass again. The rest of the train (all trailers with their loads) is too heavy for the truck's suspension, so it is not in the mass: the engine's peak torque and power go down instead, by the ratio of that mass to the mass of the whole train, the way vanilla does it for a damaged engine. Braking is not changed. `m_fKingpinLoad 0` on a trailer turns that off. Drawbar trailers (dollies) add nothing. How much the trailer's own suspension and roll are damped is `m_fDamping` on `SST_SemiTrailerComponent` (default `0.7`, 1 = no bouncing at all).
 
 ---
 
@@ -244,6 +247,20 @@ A trailer is a `GenericEntity` with `SST_SemiTrailerComponent`; its origin is th
 | Supplies | `SCR_ResourceComponent` like on the vanilla supply truck, `SST_SupplyCargoStorageComponent` for the item room (shrinks the more supplies are loaded) | `SST_Semitrailer_Supply.et` |
 | Fuel tank that refuels and burns | `SCR_FuelManagerComponent` in a slot (`m_sCargoComponent "SCR_FuelManagerComponent"` on the trailer), `SST_TankerDamageManagerComponent` | `SST_Semitrailer_Tanker.et` |
 | Rear tow hitch for a dolly | `SST_SemiTractorComponent` with `m_bTowHitch 1`, `SST_TowHitch.et` as child | `SST_Semitrailer_Base.et` (framework) |
+
+### Load and suspension
+
+A loaded trailer sits deeper in its springs and swings slower. In a curve it leans outwards, more with a heavy and high load. What counts as load: the cargo in the cargo slot (`m_fCargoMass`), the vehicles on a deck, the supplies in a supply box (`m_fSupplyMass`, 3 kg each), the fuel in a tank (`m_fFuelMass`, 0.74 kg per litre as in the vanilla jerrycan; `m_fCargoMass` is then the empty tank) and a semitrailer that sits on a dolly.
+
+| Attribute | Default | What it does |
+| --------- | ------- | ------------ |
+| `m_fRatedLoad` | `20000` | Load the suspension is built for [kg]. If the deck (`m_fMaxMass`), the cargo or the supply box takes more, that counts instead. |
+| `m_fLoadSink` | `0.6` | With the rated load the trailer sits this much deeper: part of the travel that is left above `m_fRestCompression`. |
+| `m_fSupplyMass` | `3` | Mass of one supply [kg]. Vanilla supplies weigh nothing; the vanilla M923A1 takes 1500 and the real truck carries 4.5 t. |
+| `m_fFuelMass` | `0.74` | Mass of one litre of fuel in a tank on the trailer [kg]. |
+| `m_fCurveLean` | `1` | How much the trailer leans out of a curve. `1` = as its mass and the height of its load make it, `0` = not at all. |
+
+Add-ons that put other loads on a trailer override `GetExtraLoadMass()` (what is on it now) and `GetRatedLoad()` (the most it takes).
 
 ### Vehicle deck
 

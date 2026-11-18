@@ -20,6 +20,29 @@ modded class SST_SemiTrailerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Vehicles have their centre of mass about a metre above their wheels (vanilla LAV-25: 1.12 m)
+	override float GetLoadHeight()
+	{
+		SST_VehicleCarrierComponent carrier = GetCarrier();
+		if (carrier)
+			return carrier.GetDeckY() + 1;
+
+		return super.GetLoadHeight();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetRatedLoad()
+	{
+		float load = super.GetRatedLoad();
+
+		SST_VehicleCarrierComponent carrier = GetCarrier();
+		if (carrier)
+			load += carrier.GetMaxMass();
+
+		return load;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	SST_VehicleCarrierComponent GetCarrier()
 	{
 		if (!m_bCarrierChecked)
