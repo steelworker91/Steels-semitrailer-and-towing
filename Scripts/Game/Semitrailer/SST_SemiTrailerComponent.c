@@ -26,6 +26,12 @@ class SST_SemiTrailerComponent : ScriptComponent
 	[Attribute("0.55", UIWidgets.EditBox, "Part of the weight carried by the axles, the rest is on the kingpin", category: "Suspension")]
 	protected float m_fAxleShare;
 
+	[Attribute("0.7", UIWidgets.EditBox, "Damping of the suspension and the roll, 1 = no bouncing at all, below 0.5 it bounces noticeably", category: "Suspension")]
+	protected float m_fDamping;
+
+	[Attribute("0", UIWidgets.EditBox, "How much of the weight on the kingpin presses the tractor down, 0 = none. The vanilla truck suspensions are damped very little, with this weight on them they bounce", category: "Suspension")]
+	protected float m_fKingpinLoad;
+
 	[Attribute("7000", UIWidgets.EditBox, "Empty mass [kg]", category: "Cargo")]
 	protected float m_fEmptyMass;
 
@@ -526,6 +532,14 @@ class SST_SemiTrailerComponent : ScriptComponent
 	float GetRestCompression() { return m_fRestCompression; }
 	float GetTravel() { return m_fTravel; }
 	float GetAxleShare() { return m_fAxleShare; }
+	float GetDamping() { return m_fDamping; }
+
+	//------------------------------------------------------------------------------------------------
+	//! Weight on the kingpin that presses the tractor down [kg]
+	float GetKingpinMass()
+	{
+		return GetMass() * (1 - m_fAxleShare) * m_fKingpinLoad;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	float GetMass()

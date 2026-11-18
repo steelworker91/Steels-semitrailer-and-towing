@@ -7,6 +7,9 @@
 //
 // Every machine runs this behind the tractor it sees, nothing about the pose goes over the network.
 // The trailer body is kinematic everywhere, it only collides.
+// The weight on the kingpin presses the tractor down at the fifth wheel, straight down along the
+// tractor's own up axis. It never pushes or pulls the tractor along the road, braking and
+// accelerating stay as they are. Drawbar trailers carry their weight themselves.
 //
 // Coupling works like on a real fifth wheel: back the tractor under a parked trailer and the jaws
 // lock once the kingpin is on the plate. Uncoupling is done at the trailer (user action), the trailer
@@ -38,7 +41,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	[Attribute("70", UIWidgets.EditBox, "Max articulation angle [deg]", category: "Coupling")]
 	protected float m_fMaxArticulation;
 
-	[Attribute("15", UIWidgets.EditBox, "Max pitch against the tractor [deg]", category: "Coupling")]
+	[Attribute("15", UIWidgets.EditBox, "A bogie in the air hangs down at most this far below the fifth wheel [deg]", category: "Coupling")]
 	protected float m_fMaxPitch;
 
 	[Attribute("6", UIWidgets.EditBox, "Max roll against the tractor [deg]", category: "Coupling")]
@@ -58,6 +61,9 @@ class SST_SemiTractorComponent : ScriptGameComponent
 
 	[Attribute("", UIWidgets.EditBox, "Tow hook from this action context of the vehicle (vanilla trucks: tow_hook). With Tow hitch it replaces the fifth wheel position, without it the tractor takes drawbar trailers there as well. Empty = none", category: "Coupling")]
 	protected string m_sHitchContext;
+
+	[Attribute("0.8", UIWidgets.EditBox, "Most a semitrailer presses down on the fifth wheel, times the tractor's own mass", category: "Coupling")]
+	protected float m_fMaxKingpinLoad;
 
 	protected vector m_vHitch;			// tow hook of a tractor that also has a fifth wheel
 	protected bool m_bHasHitch;
@@ -86,8 +92,11 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	protected vector m_vKingOffset;		// eases the kingpin onto the plate after coupling
 	protected float m_fScanTimer;
 	protected float m_fTippedTime;
+	protected float m_fPressMass;		// weight of the trailer on the fifth wheel, pressed on the tractor every physics step [kg]
 	protected ref array<float> m_aComp = {};
 	protected ref array<float> m_aWheelGround = {};
+	protected ref array<float> m_aWheelGroundLast = {};	// ground under the wheels in the frame before
+	protected float m_fFrameDone = 1;
 	protected float m_fTeleportDist = TELEPORT_DIST;
 	protected ref array<float> m_aPointGround = {};
 	protected ref array<float> m_aPointPen = {};
@@ -103,6 +112,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	static const float GRAVITY = 9.81;
 	static const float TELEPORT_DIST = 6;
 	static const float NO_GROUND = -1000000;
+	static const float GROUND_EDGE = 0.5;		// ground that changes more than this in a frame is an edge, not a slope [m]
 	static const float TIPPED_UP = 0.34;		// up axis this low = more than ~70 deg over
 	static const float TIPPED_TIME = 0.5;
 
@@ -111,7 +121,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	{
 		super.OnPostInit(owner);
 
-		SetEventMask(owner, EntityEvent.INIT | EntityEvent.POSTFRAME);
+		SetEventMask(owner, EntityEvent.INIT | EntityEvent.POSTFRAME | EntityEvent.SIMULATE);
 
 		if (GetGame() && GetGame().InPlayMode())
 			s_aTractors.Insert(this);
@@ -469,6 +479,22 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	//! After the physics update: in EOnFrame the tractor has not moved yet this frame, the trailer
 	//! would hang one frame behind it. That is speed * frame time, half a metre at 100 km/h and
 	//! changing with every frame, so the trailer jerks against the truck at speed.
+	//------------------------------------------------------------------------------------------------
+	//! The trailer weight goes on in every physics step, once a frame it jolts the truck up and down
+	override void EOnSimulate(IEntity owner, float timeSlice)
+	{
+		if (m_fPressMass <= 0)
+			return;
+
+		Physics phys = owner.GetPhysics();
+		if (!phys)
+			return;
+
+		vector down = owner.GetTransformAxis(1) * -1;
+		phys.ApplyImpulseAt(owner.CoordToParent(m_vCouple), down * (m_fPressMass * GRAVITY * timeSlice));
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnPostFrame(IEntity owner, float timeSlice)
 	{
 		// moved by the tractor in front, which updates us right after that
@@ -496,6 +522,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	protected void Tow(IEntity owner, float timeSlice)
 	{
+		m_fPressMass = 0;
 		IEntity trailer = GetTrailer();
 		if (!trailer)
 		{
@@ -555,11 +582,35 @@ class SST_SemiTractorComponent : ScriptGameComponent
 			float dt = timeSlice / steps;
 			for (int i = 0; i < steps; i++)
 			{
+				// how far this frame has got after this sub step, 0..1
+				m_fFrameDone = i + 1;
+				m_fFrameDone /= steps;
 				Step(owner, trailer, dt, i == 0);
 			}
 		}
 
+		m_fPressMass = PressMass(owner);
+
 		ApplyPose(owner, trailer);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The weight on the kingpin that goes on the tractor (EOnSimulate), along its down axis only.
+	//! Only where the tractor is simulated, like the vanilla push vehicle action, 0 elsewhere.
+	protected float PressMass(IEntity owner)
+	{
+		if (m_TrailerComp.HasDrawbar())
+			return 0;
+
+		Physics phys = owner.GetPhysics();
+		if (!phys || !phys.IsDynamic())
+			return 0;
+
+		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
+		if (!rpl || rpl.Role() != RplRole.Authority && !rpl.IsOwnerProxy())
+			return 0;
+
+		return Math.Min(m_TrailerComp.GetKingpinMass(), phys.GetMass() * m_fMaxKingpinLoad);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -628,26 +679,34 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		float restAngle = Math.Atan2(-axleOffset, length);
 		m_fPitch = Math.Atan2(kingpin[1] - m_fAxleY, length) - restAngle;
 
-		vector tractorAxisX = tractor.GetTransformAxis(0);
-		vector tractorAxisZ = tractor.GetTransformAxis(2);
-		float tractorPitch = Math.Asin(Math.Clamp(tractorAxisZ[1], -1, 1));
-		float tractorRoll = Math.Asin(Math.Clamp(tractorAxisX[1], -1, 1));
+		// How the fifth wheel plate slopes along the trailer and across it. With the trailer at an
+		// angle to the tractor, the tractor's pitch is partly roll for the trailer and the other way
+		// round, so its own pitch and roll are no use here.
+		vector plateUp = tractor.GetTransformAxis(1);
+		float tractorPitch = Math.Atan2(-vector.Dot(plateUp, heading), plateUp[1]);
+		float tractorRoll = Math.Atan2(-vector.Dot(plateUp, right), plateUp[1]);
 
 		// wheels
 		float bogieMass = mass * m_TrailerComp.GetAxleShare();
 		float spring = bogieMass * GRAVITY / (wheelCount * Math.Max(rest, 0.01));
-		float damper = 0.8 * Math.Sqrt(spring * bogieMass / wheelCount);
+		float damping = m_TrailerComp.GetDamping();
+		float damper = 2 * damping * Math.Sqrt(spring * bogieMass / wheelCount);
 		float sinPitch = Math.Sin(m_fPitch);
 		float sinRoll = Math.Sin(m_fRoll);
 
-		// the wheels stand on the same spot in every sub step, so the ground is traced once per frame
+		// The ground is traced once per frame. On a slope it is lower (or higher) than in the frame
+		// before, and the sub steps go from the old height to the new one evenly. With the new height
+		// in all of them the axle seems to fall towards ground that stands still, the dampers push
+		// back and throw the bogie up: the trailer jumped all the way down a hill.
 		bool traceWheels = firstStep || m_aWheelGround.Count() != wheelCount;
 		if (m_aWheelGround.Count() != wheelCount)
 		{
 			m_aWheelGround.Clear();
+			m_aWheelGroundLast.Clear();
 			for (int i = 0; i < wheelCount; i++)
 			{
 				m_aWheelGround.Insert(NO_GROUND);
+				m_aWheelGroundLast.Insert(NO_GROUND);
 			}
 		}
 
@@ -665,9 +724,15 @@ class SST_SemiTractorComponent : ScriptGameComponent
 			vector pos = m_vBogie + heading * along + right * side;
 			float axleY = m_fAxleY + along * sinPitch + side * sinRoll;
 			if (traceWheels)
+			{
+				m_aWheelGroundLast[i] = m_aWheelGround[i];
 				m_aWheelGround[i] = GroundY(tractor, trailer, pos, axleY);
+			}
 
 			float ground = m_aWheelGround[i];
+			float groundLast = m_aWheelGroundLast[i];
+			if (ground > NO_GROUND && groundLast > NO_GROUND && Math.AbsFloat(ground - groundLast) < GROUND_EDGE)
+				ground = groundLast + (ground - groundLast) * m_fFrameDone;
 
 			float comp = -1;
 			if (ground > NO_GROUND)
@@ -763,16 +828,14 @@ class SST_SemiTractorComponent : ScriptGameComponent
 			return;
 		}
 
-		// pitch limit of the fifth wheel
+		// Pitch limit of the fifth wheel: a bogie that hangs in the air does not drop further than
+		// the plate lets it. Wheels on the ground stay where the ground is. Forcing the limit there
+		// pushed the bogie into a bank or lifted it off the ground whenever the tractor went through
+		// a ditch at another angle than the trailer.
 		float maxPitch = m_fMaxPitch * Math.DEG2RAD;
 		float pitch = Math.Atan2(kingpin[1] - m_fAxleY, length) - restAngle;
-		float relPitch = pitch - tractorPitch;
-		if (relPitch > maxPitch || relPitch < -maxPitch)
-		{
-			pitch = tractorPitch + Math.Clamp(relPitch, -maxPitch, maxPitch);
-			m_fAxleY = kingpin[1] - length * Math.Tan(pitch + restAngle);
+		if (maxComp <= 0 && pitch - tractorPitch > maxPitch && m_fAxleVel < 0)
 			m_fAxleVel = 0;
-		}
 
 		if (halfTrack < 0.1)
 			return;
@@ -780,7 +843,7 @@ class SST_SemiTractorComponent : ScriptGameComponent
 		// roll, the fifth wheel pulls it back to the tractor's roll
 		float inertia = bogieMass * halfTrack * halfTrack * 1.5;
 		float rollSpring = mass * GRAVITY * halfTrack * 3;
-		float rollDamper = 1.2 * Math.Sqrt(rollSpring * inertia);
+		float rollDamper = 2 * damping * Math.Sqrt(rollSpring * inertia);
 		torque += rollSpring * (tractorRoll - m_fRoll) - rollDamper * m_fRollVel;
 
 		m_fRollVel += torque / inertia * dt;

@@ -45,10 +45,13 @@ Both use the same two pieces on the truck: the `SST_SemiTractorComponent` and th
 | `m_fCoupleRadius`            | `0.45`        | How close the kingpin has to be to the plate before the jaws lock [m].                                                                                                                    |
 | `m_fCoupleSpeed`             | `1.5`         | Max truck speed for coupling and uncoupling [m/s].                                                                                                                                        |
 | `m_fMaxArticulation`         | `70`          | Max angle between truck and trailer [deg].                                                                                                                                                |
-| `m_fMaxPitch` / `m_fMaxRoll` | `15` / `6`    | Max pitch and roll of the trailer against the truck [deg].                                                                                                                                |
+| `m_fMaxPitch` / `m_fMaxRoll` | `15` / `6`    |  How far the bogie of a trailer may hang down below the fifth wheel while its wheels are in the air, and max roll of the trailer against the truck [deg]. Wheels on the ground always follow the ground. |
 | `m_fHandCoupleRadius`        | `0`           | Distance for coupling a drawbar trailer (dolly) by hand, 0 = what the action allows [m].                                                                                                  |
 | `m_bTowHitch`                | off           | The truck has a tow hitch instead of a fifth wheel: only drawbar trailers (dollies) couple.                                                                                               |
 | `m_sHitchContext`            | empty         | Action context that marks the tow hook (vanilla trucks: `tow_hook`). With a fifth wheel as well, the truck takes a dolly on the hook and a semitrailer on the fifth wheel, one at a time. |
+| `m_fMaxKingpinLoad`          | `0.8`         | Most a semitrailer presses down on the fifth wheel, times the truck's own physics mass (Ural 4320: 7062 kg).                                                                            |
+
+With `m_fKingpinLoad` above 0 on the trailer (default 0 = off), the weight on the kingpin (trailer mass incl. load × (1 − `m_fAxleShare`) × `m_fKingpinLoad`) presses the truck down at the fifth wheel, along the truck's own down axis only. It never pushes the truck when braking or holds it back when accelerating. It is off by default: the vanilla truck suspensions are damped very little (Ural 4320 rear: about 0.15 of critical) and start to bounce with that weight on them. Drawbar trailers (dollies) don't press on the truck. How much the trailer's own suspension and roll are damped is `m_fDamping` on `SST_SemiTrailerComponent` (default `0.7`, 1 = no bouncing at all).
 
 ---
 
