@@ -1,6 +1,15 @@
 Vehicle : "{9A0D72816DFFDB7F}Prefabs/Vehicles/Wheeled/M923A1/M923A1.et" {
  ID "9B3F82414BAE8C38"
  components {
+  BaseVehicleNodeComponent "{20FB66C5B2237133}" {
+   components {
+    SCR_CarControllerComponent "{20FB66C5BC92275B}" {
+     ReverseCurve {
+      1000 0.8 1200 0.5 1400 0
+     }
+    }
+   }
+  }
   SCR_EditableVehicleComponent "{50DEB7C26B5EB312}" {
    m_UIInfo SCR_EditableVehicleUIInfo "{5298E609432D192D}" {
     Name "M923A1 with Satchel"
@@ -38,6 +47,9 @@ Vehicle : "{9A0D72816DFFDB7F}Prefabs/Vehicles/Wheeled/M923A1/M923A1.et" {
     }
     Clutch Clutch Clutch {
      MaxClutchTorque 3060
+    }
+    Gearbox Gearbox Gearbox {
+     Reverse 5.38
     }
    }
   }

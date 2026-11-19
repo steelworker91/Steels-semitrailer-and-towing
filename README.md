@@ -51,10 +51,42 @@ Both use the same two pieces on the truck: the `SST_SemiTractorComponent` and th
 | `m_sHitchContext`            | empty         | Action context that marks the tow hook (vanilla trucks: `tow_hook`). With a fifth wheel as well, the truck takes a dolly on the hook and a semitrailer on the fifth wheel, one at a time. |
 | `m_fMaxKingpinLoad`          | `0.8`         | Most a semitrailer adds to the mass of the truck, times the truck's own physics mass (M923A1: 8071 kg, Ural 4320: 7062 kg). |
 | `m_fTrainDrag`               | `1`           | How much the mass of the whole train slows the truck down. `1` = the engine pulls away like in a vehicle of that mass, `0` = only the weight on the fifth wheel counts. |
-| `m_fTrainPush`               | `0.3`         | Braking with a train: how much of the mass that is not on the truck pushes it while the driver brakes. `0` = the trailers brake themselves completely, `1` = they have no brakes. The brakes of a vehicle can't be changed from script, so the truck gets a part of the speed it lost back every frame. |
-| `m_bObstacles`               | on            | The trailer stops at buildings, walls and rocks: it slides off where a small turn about the kingpin frees it, otherwise the truck is held there. Trees, fences and other things a truck knocks over don't stop it. |
+| `m_fTrainPush`               | `0`           | Braking with a train: how much of the mass that is not on the truck pushes it while the driver brakes. `0` = the trailers brake themselves completely, `1` = they have no brakes. With `0` only the weight on the fifth wheel lengthens the braking distance: an M923A1 with a loaded semitrailer brakes with about 3.3 to 3.7 m/s2, where a loaded tractor of its time had to reach about 3.3 m/s2 (FMVSS 121 before 2009: 355 ft from 60 mph). The brakes of a vehicle can't be changed from script, so that mass goes into the wheels of the truck (`WheelSetMassState`): heavy wheels take longer to stop, without any weight on the suspension. It counts for the handbrake too. |
+| `m_bObstacles`               | on            | The trailer stops at buildings, walls and rocks: it slides off where a small turn about the kingpin frees it, otherwise the truck is held there. Trees, fences and other things a truck knocks over don't stop it. Only the server checks; while the trailer touches something the clients get its angle and follow it. |
 
-While a semitrailer is coupled, the weight on its kingpin (trailer mass incl. load × (1 − `m_fAxleShare`) × `m_fKingpinLoad`, default 1) is added to the physics mass of the truck. The truck sits deeper, leans more and takes longer to speed up and to stop, more so with a loaded trailer. Uncoupled it has its own mass again. The rest of the train (all trailers with their loads) is too heavy for the truck's suspension, so it is not in the mass: the engine's peak torque and power go down instead, by the ratio of that mass to the mass of the whole train, the way vanilla does it for a damaged engine. Braking is not changed. `m_fKingpinLoad 0` on a trailer turns that off. Drawbar trailers (dollies) add nothing. How much the trailer's own suspension and roll are damped is `m_fDamping` on `SST_SemiTrailerComponent` (default `0.7`, 1 = no bouncing at all).
+While a semitrailer is coupled, the weight on its kingpin (trailer mass incl. load × (1 − `m_fAxleShare`) × `m_fKingpinLoad`, default 1) is added to the physics mass of the truck. The truck sits deeper, leans more and takes longer to speed up and to stop, more so with a loaded trailer. Uncoupled it has its own mass again. The rest of the train (all trailers with their loads) is too heavy for the truck's suspension, so it is not in the mass: the engine's peak torque and power go down instead, by the ratio of that mass to the mass of the whole train, the way vanilla does it for a damaged engine. The brakes are not changed, how much the train lengthens the braking distance is set with `m_fTrainPush`. `m_fKingpinLoad 0` on a trailer turns that off. Drawbar trailers (dollies) add nothing. How much the trailer's own suspension and roll are damped is `m_fDamping` on `SST_SemiTrailerComponent` (default `0.7`, 1 = no bouncing at all).
+
+### Engine of a tractor
+
+`SST_M923A1_Tractor` has twice the engine of the vanilla M923A1 (360 kW, 1858 Nm, clutch 3060 Nm), so it can pull a loaded train. Its reverse gear is 5.38 instead of 10.76 and the reverse throttle curve sits at half the engine speed:
+
+```
+BaseVehicleNodeComponent "{20FB66C5B2237133}" {
+ components {
+  SCR_CarControllerComponent "{20FB66C5BC92275B}" {
+   ReverseCurve {
+    1000 0.8 1200 0.5 1400 0
+   }
+  }
+ }
+}
+VehicleWheeledSimulation "{731B26FCA2F19855}" {
+ Simulation Wheeled "{4D8B26DEA5F25978}" {
+  Engine Engine Engine {
+   MaxPower 360
+   MaxTorque 1858
+  }
+  Clutch Clutch Clutch {
+   MaxClutchTorque 3060
+  }
+  Gearbox Gearbox Gearbox {
+   Reverse 5.38
+  }
+ }
+}
+```
+
+With twice the torque through the vanilla reverse gear the truck stuttered on a dedicated server whenever it backed up. Half the ratio and the vanilla throttle limits at half the engine speed give the wheels the torque and the top speed of the vanilla truck in reverse. If you give your own tractor more power, check its reverse gear the same way: the Ural-4320 did not need it, its reverse gear (5.2) is about as long as its first (5.07).
 
 ---
 
@@ -233,6 +265,8 @@ A truck can also pull a dolly (and a semitrailer on the dolly) from its tow hook
 - **Fifth wheel and tow hook**: leave `m_bTowHitch` off and set `m_sHitchContext`. A semitrailer goes on the fifth wheel, a dolly on the hook, one at a time.
 
 If your truck has no `tow_hook` context, add a `UserActionContext` with that name to its `ActionsManagerComponent` at the hook. Dollies and the trailers with a rear tow hitch are in SSTTExpanded.
+
+A road train moves up to 64 links behind the truck, every dolly and every trailer is one link. Coupling is not refused beyond that, the links after the 64th just stay where they stand. Each link costs a little: the engine pulls weaker with the mass of the train, and the server checks every trailer for obstacles.
 
 ---
 
