@@ -17,6 +17,11 @@ Vehicle : "{9A0D72816DFFDB7F}Prefabs/Vehicles/Wheeled/M923A1/M923A1.et" {
     m_aAuthoredLabels + {
      TRAIT_STEELS_TRUCKS
     }
+    m_EntityBudgetCost {
+     SCR_EntityBudgetValue "{5EDC86E4AF8908B6}" {
+      m_Value 200
+     }
+    }
    }
   }
   SCR_VehicleCameraDataComponent "{216DA82C75CDD94B}" {

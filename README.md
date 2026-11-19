@@ -210,6 +210,31 @@ SCR_EntityCatalogMultiList {
 
 Use the catalog of the faction the truck belongs to (`US`, `USSR`, `FIA`, `CIV`), and the `SCR_EntityCatalogMultiListEntry` GUID of the vehicle list in that catalog. If the truck mod has its own catalog, override that one the same way. Overrides (option 2) need no catalog entry, the truck is already listed.
 
+### Vehicle depot in Conflict
+
+To get a tractor or a trailer at the heavy vehicle depot (building mode of Conflict), three things have to be right:
+
+- **Catalog**: its entry in the vehicle catalog of the faction is valid in building mode. `33` is Game Master and building, `BUILDING` is building only (for prefabs the Game Master already gets from somewhere else, like the trailers from `Systems.conf`):
+
+  ```
+  SCR_EntityCatalogEditorData "{...}" {
+   m_eValidEditorModes 33
+  }
+  ```
+
+- **Labels**: the prefab has the label of the faction (`FACTION_US`, `FACTION_USSR`) and one of the labels the depot offers: `VEHICLE_TRUCK` (tab of the trucks) or `TRAIT_STEELS_TRUCKS` (tab "Steel's Trucks", see below). It must not have `THEME_MILITARY`: construction trucks and the HQ offer everything with that label. The trailers of the framework and of SSTTExpanded are set up like that. If the Workbench plugin for the automatic labels puts `THEME_MILITARY` back on a trailer, take it out again.
+- **Price**: the `CAMPAIGN` value in `m_EntityBudgetCost` of the editable component is the price in supplies. Vehicles inherit the entry from `Vehicle_Base.et` and only set the value:
+
+  ```
+  m_EntityBudgetCost {
+   SCR_EntityBudgetValue "{5EDC86E4AF8908B6}" {
+    m_Value 200
+   }
+  }
+  ```
+
+SSTTExpanded puts the MERDC tractor and trailers into the US depot and the Soviet ones into the USSR depot, in a tab of their own with the icon of the "Steel's Trucks" trait (the tractors are in the tab of the trucks as well). For that it overrides three vanilla prefabs: `Prefabs/Editor/Modes/EditorModeBuilding.et` gets the tab (a `SCR_EditorContentBrowserSaveStateDataUI` with the label `TRAIT_STEELS_TRUCKS`), and the providers of the heavy depots, `VehicleService_US_Medium.et` and `VehicleService_USSR_Medium.et`, get that label in `m_aAvailableTraits`: a tab only shows where the provider has its label. Prices: tractor 200 (as the vanilla transport truck), fuel trailer 160 (as the vanilla tanker), supply trailer 200, carrier and lowbed trailer 150, flatbed trailer 100, dolly 50.
+
 ### 7. Publish
 
 Publish the compatability addon with its dependencies set, so the Workshop pulls in the framework and the truck mod. The truck mod itself does not change.
