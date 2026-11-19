@@ -1,12 +1,26 @@
 Vehicle : "{9A0D72816DFFDB7F}Prefabs/Vehicles/Wheeled/M923A1/M923A1.et" {
  ID "9B3F82414BAE8C38"
  components {
+  BaseVehicleNodeComponent "{20FB66C5B2237133}" {
+   components {
+    SCR_CarControllerComponent "{20FB66C5BC92275B}" {
+     ReverseCurve {
+      1000 0.8 1200 0.5 1400 0
+     }
+    }
+   }
+  }
   SCR_EditableVehicleComponent "{50DEB7C26B5EB312}" {
    m_UIInfo SCR_EditableVehicleUIInfo "{5298E609432D192D}" {
     Name "M923A1 with Satchel"
     Description "M923A1 with a fifth wheel, spawns without a trailer. Back it under a semitrailer to couple."
     m_aAuthoredLabels + {
      TRAIT_STEELS_TRUCKS
+    }
+    m_EntityBudgetCost {
+     SCR_EntityBudgetValue "{5EDC86E4AF8908B6}" {
+      m_Value 200
+     }
     }
    }
   }
@@ -27,6 +41,20 @@ Vehicle : "{9A0D72816DFFDB7F}Prefabs/Vehicles/Wheeled/M923A1/M923A1.et" {
     EntitySlotInfo FifthWheel {
      Offset 0 0 -0.6
      Prefab "{147669274E520343}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_FifthWheel.et"
+    }
+   }
+  }
+  VehicleWheeledSimulation "{731B26FCA2F19855}" {
+   Simulation Wheeled "{4D8B26DEA5F25978}" {
+    Engine Engine Engine {
+     MaxPower 360
+     MaxTorque 1858
+    }
+    Clutch Clutch Clutch {
+     MaxClutchTorque 3060
+    }
+    Gearbox Gearbox Gearbox {
+     Reverse 5.38
     }
    }
   }

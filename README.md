@@ -45,10 +45,48 @@ Both use the same two pieces on the truck: the `SST_SemiTractorComponent` and th
 | `m_fCoupleRadius`            | `0.45`        | How close the kingpin has to be to the plate before the jaws lock [m].                                                                                                                    |
 | `m_fCoupleSpeed`             | `1.5`         | Max truck speed for coupling and uncoupling [m/s].                                                                                                                                        |
 | `m_fMaxArticulation`         | `70`          | Max angle between truck and trailer [deg].                                                                                                                                                |
-| `m_fMaxPitch` / `m_fMaxRoll` | `15` / `6`    | Max pitch and roll of the trailer against the truck [deg].                                                                                                                                |
+| `m_fMaxPitch` / `m_fMaxRoll` | `15` / `6`    |  How far the bogie of a trailer may hang down below the fifth wheel while its wheels are in the air, and max roll of the trailer against the truck [deg]. Wheels on the ground always follow the ground. |
 | `m_fHandCoupleRadius`        | `0`           | Distance for coupling a drawbar trailer (dolly) by hand, 0 = what the action allows [m].                                                                                                  |
 | `m_bTowHitch`                | off           | The truck has a tow hitch instead of a fifth wheel: only drawbar trailers (dollies) couple.                                                                                               |
 | `m_sHitchContext`            | empty         | Action context that marks the tow hook (vanilla trucks: `tow_hook`). With a fifth wheel as well, the truck takes a dolly on the hook and a semitrailer on the fifth wheel, one at a time. |
+| `m_fMaxKingpinLoad`          | `0.8`         | Most a semitrailer adds to the mass of the truck, times the truck's own physics mass (M923A1: 8071 kg, Ural 4320: 7062 kg). |
+| `m_fTrainDrag`               | `1`           | How much the mass of the whole train slows the truck down. `1` = the engine pulls away like in a vehicle of that mass, `0` = only the weight on the fifth wheel counts. |
+| `m_fTrainPush`               | `0`           | Braking with a train: how much of the mass that is not on the truck pushes it while the driver brakes. `0` = the trailers brake themselves completely, `1` = they have no brakes. With `0` only the weight on the fifth wheel lengthens the braking distance: an M923A1 with a loaded semitrailer brakes with about 3.3 to 3.7 m/s2, where a loaded tractor of its time had to reach about 3.3 m/s2 (FMVSS 121 before 2009: 355 ft from 60 mph). The brakes of a vehicle can't be changed from script, so that mass goes into the wheels of the truck (`WheelSetMassState`): heavy wheels take longer to stop, without any weight on the suspension. It counts for the handbrake too. |
+| `m_bObstacles`               | on            | The trailer stops at buildings, walls and rocks: it slides off where a small turn about the kingpin frees it, otherwise the truck is held there. Trees, fences and other things a truck knocks over don't stop it. Only the server checks; while the trailer touches something the clients get its angle and follow it. |
+
+While a semitrailer is coupled, the weight on its kingpin (trailer mass incl. load × (1 − `m_fAxleShare`) × `m_fKingpinLoad`, default 1) is added to the physics mass of the truck. The truck sits deeper, leans more and takes longer to speed up and to stop, more so with a loaded trailer. Uncoupled it has its own mass again. The rest of the train (all trailers with their loads) is too heavy for the truck's suspension, so it is not in the mass: the engine's peak torque and power go down instead, by the ratio of that mass to the mass of the whole train, the way vanilla does it for a damaged engine. The brakes are not changed, how much the train lengthens the braking distance is set with `m_fTrainPush`. `m_fKingpinLoad 0` on a trailer turns that off. Drawbar trailers (dollies) add nothing. How much the trailer's own suspension and roll are damped is `m_fDamping` on `SST_SemiTrailerComponent` (default `0.7`, 1 = no bouncing at all).
+
+### Engine of a tractor
+
+`SST_M923A1_Tractor` has twice the engine of the vanilla M923A1 (360 kW, 1858 Nm, clutch 3060 Nm), so it can pull a loaded train. Its reverse gear is 5.38 instead of 10.76 and the reverse throttle curve sits at half the engine speed:
+
+```
+BaseVehicleNodeComponent "{20FB66C5B2237133}" {
+ components {
+  SCR_CarControllerComponent "{20FB66C5BC92275B}" {
+   ReverseCurve {
+    1000 0.8 1200 0.5 1400 0
+   }
+  }
+ }
+}
+VehicleWheeledSimulation "{731B26FCA2F19855}" {
+ Simulation Wheeled "{4D8B26DEA5F25978}" {
+  Engine Engine Engine {
+   MaxPower 360
+   MaxTorque 1858
+  }
+  Clutch Clutch Clutch {
+   MaxClutchTorque 3060
+  }
+  Gearbox Gearbox Gearbox {
+   Reverse 5.38
+  }
+ }
+}
+```
+
+With twice the torque through the vanilla reverse gear the truck stuttered on a dedicated server whenever it backed up. Half the ratio and the vanilla throttle limits at half the engine speed give the wheels the torque and the top speed of the vanilla truck in reverse. If you give your own tractor more power, check its reverse gear the same way: the Ural-4320 did not need it, its reverse gear (5.2) is about as long as its first (5.07).
 
 ---
 
@@ -172,6 +210,31 @@ SCR_EntityCatalogMultiList {
 
 Use the catalog of the faction the truck belongs to (`US`, `USSR`, `FIA`, `CIV`), and the `SCR_EntityCatalogMultiListEntry` GUID of the vehicle list in that catalog. If the truck mod has its own catalog, override that one the same way. Overrides (option 2) need no catalog entry, the truck is already listed.
 
+### Vehicle depot in Conflict
+
+To get a tractor or a trailer at the heavy vehicle depot (building mode of Conflict), three things have to be right:
+
+- **Catalog**: its entry in the vehicle catalog of the faction is valid in building mode. `33` is Game Master and building, `BUILDING` is building only (for prefabs the Game Master already gets from somewhere else, like the trailers from `Systems.conf`):
+
+  ```
+  SCR_EntityCatalogEditorData "{...}" {
+   m_eValidEditorModes 33
+  }
+  ```
+
+- **Labels**: the prefab has the label of the faction (`FACTION_US`, `FACTION_USSR`) and one of the labels the depot offers: `VEHICLE_TRUCK` (tab of the trucks) or `TRAIT_STEELS_TRUCKS` (tab "Steel's Trucks", see below). It must not have `THEME_MILITARY`: construction trucks and the HQ offer everything with that label. The trailers of the framework and of SSTTExpanded are set up like that. If the Workbench plugin for the automatic labels puts `THEME_MILITARY` back on a trailer, take it out again.
+- **Price**: the `CAMPAIGN` value in `m_EntityBudgetCost` of the editable component is the price in supplies. Vehicles inherit the entry from `Vehicle_Base.et` and only set the value:
+
+  ```
+  m_EntityBudgetCost {
+   SCR_EntityBudgetValue "{5EDC86E4AF8908B6}" {
+    m_Value 200
+   }
+  }
+  ```
+
+SSTTExpanded puts the MERDC tractor and trailers into the US depot and the Soviet ones into the USSR depot, in a tab of their own with the icon of the "Steel's Trucks" trait (the tractors are in the tab of the trucks as well). For that it overrides three vanilla prefabs: `Prefabs/Editor/Modes/EditorModeBuilding.et` gets the tab (a `SCR_EditorContentBrowserSaveStateDataUI` with the label `TRAIT_STEELS_TRUCKS`), and the providers of the heavy depots, `VehicleService_US_Medium.et` and `VehicleService_USSR_Medium.et`, get that label in `m_aAvailableTraits`: a tab only shows where the provider has its label. Prices: tractor 200 (as the vanilla transport truck), fuel trailer 160 (as the vanilla tanker), supply trailer 200, carrier and lowbed trailer 150, flatbed trailer 100, dolly 50.
+
 ### 7. Publish
 
 Publish the compatability addon with its dependencies set, so the Workshop pulls in the framework and the truck mod. The truck mod itself does not change.
@@ -228,6 +291,8 @@ A truck can also pull a dolly (and a semitrailer on the dolly) from its tow hook
 
 If your truck has no `tow_hook` context, add a `UserActionContext` with that name to its `ActionsManagerComponent` at the hook. Dollies and the trailers with a rear tow hitch are in SSTTExpanded.
 
+A road train moves up to 64 links behind the truck, every dolly and every trailer is one link. Coupling is not refused beyond that, the links after the 64th just stay where they stand. Each link costs a little: the engine pulls weaker with the mass of the train, and the server checks every trailer for obstacles.
+
 ---
 
 ## C. Your own trailers
@@ -241,6 +306,20 @@ A trailer is a `GenericEntity` with `SST_SemiTrailerComponent`; its origin is th
 | Supplies | `SCR_ResourceComponent` like on the vanilla supply truck, `SST_SupplyCargoStorageComponent` for the item room (shrinks the more supplies are loaded) | `SST_Semitrailer_Supply.et` |
 | Fuel tank that refuels and burns | `SCR_FuelManagerComponent` in a slot (`m_sCargoComponent "SCR_FuelManagerComponent"` on the trailer), `SST_TankerDamageManagerComponent` | `SST_Semitrailer_Tanker.et` |
 | Rear tow hitch for a dolly | `SST_SemiTractorComponent` with `m_bTowHitch 1`, `SST_TowHitch.et` as child | `SST_Semitrailer_Base.et` (framework) |
+
+### Load and suspension
+
+A loaded trailer sits deeper in its springs and swings slower. In a curve it leans outwards, more with a heavy and high load. What counts as load: the cargo in the cargo slot (`m_fCargoMass`), the vehicles on a deck, the supplies in a supply box (`m_fSupplyMass`, 3 kg each), the fuel in a tank (`m_fFuelMass`, 0.74 kg per litre as in the vanilla jerrycan; `m_fCargoMass` is then the empty tank) and a semitrailer that sits on a dolly.
+
+| Attribute | Default | What it does |
+| --------- | ------- | ------------ |
+| `m_fRatedLoad` | `20000` | Load the suspension is built for [kg]. If the deck (`m_fMaxMass`), the cargo or the supply box takes more, that counts instead. |
+| `m_fLoadSink` | `0.6` | With the rated load the trailer sits this much deeper: part of the travel that is left above `m_fRestCompression`. |
+| `m_fSupplyMass` | `3` | Mass of one supply [kg]. Vanilla supplies weigh nothing; the vanilla M923A1 takes 1500 and the real truck carries 4.5 t. |
+| `m_fFuelMass` | `0.74` | Mass of one litre of fuel in a tank on the trailer [kg]. |
+| `m_fCurveLean` | `1` | How much the trailer leans out of a curve. `1` = as its mass and the height of its load make it, `0` = not at all. |
+
+Add-ons that put other loads on a trailer override `GetExtraLoadMass()` (what is on it now) and `GetRatedLoad()` (the most it takes).
 
 ### Vehicle deck
 

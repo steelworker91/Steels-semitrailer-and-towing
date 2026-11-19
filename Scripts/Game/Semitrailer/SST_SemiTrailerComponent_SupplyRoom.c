@@ -68,6 +68,8 @@ modded class SST_SemiTrailerComponent
 	[RplProp()]
 	protected float m_fSST_SupplyFill;
 
+	protected float m_fSST_SupplyRoom = -1;		// most supplies the box takes, looked up on every machine
+
 	// server only
 	protected SCR_ResourceContainer m_SST_SupplyContainer;
 	protected float m_fSST_SupplyMax;
@@ -99,6 +101,40 @@ modded class SST_SemiTrailerComponent
 	float SST_GetSupplyFill()
 	{
 		return m_fSST_SupplyFill;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Most supplies the box takes, 0 without a box
+	protected float SST_GetSupplyRoom()
+	{
+		if (m_fSST_SupplyRoom >= 0)
+			return m_fSST_SupplyRoom;
+
+		m_fSST_SupplyRoom = 0;
+		if (!GetOwner().FindComponent(SST_SupplyCargoStorageComponent))
+			return 0;
+
+		SCR_ResourceComponent resources = SCR_ResourceComponent.Cast(GetOwner().FindComponent(SCR_ResourceComponent));
+		if (!resources)
+			return 0;
+
+		SCR_ResourceContainer container = resources.GetContainer(EResourceType.SUPPLIES);
+		if (container)
+			m_fSST_SupplyRoom = container.GetMaxResourceValue();
+
+		return m_fSST_SupplyRoom;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetExtraLoadMass()
+	{
+		return super.GetExtraLoadMass() + m_fSST_SupplyFill * SST_GetSupplyRoom() * m_fSupplyMass;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetRatedLoad()
+	{
+		return super.GetRatedLoad() + SST_GetSupplyRoom() * m_fSupplyMass;
 	}
 
 	//------------------------------------------------------------------------------------------------

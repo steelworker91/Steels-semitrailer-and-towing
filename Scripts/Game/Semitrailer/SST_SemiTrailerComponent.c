@@ -26,11 +26,34 @@ class SST_SemiTrailerComponent : ScriptComponent
 	[Attribute("0.55", UIWidgets.EditBox, "Part of the weight carried by the axles, the rest is on the kingpin", category: "Suspension")]
 	protected float m_fAxleShare;
 
+	[Attribute("0.7", UIWidgets.EditBox, "Damping of the suspension and the roll, 1 = no bouncing at all, below 0.5 it bounces noticeably", category: "Suspension")]
+	protected float m_fDamping;
+
+	[Attribute("1", UIWidgets.EditBox, "How much of the weight on the kingpin is added to the mass of the tractor, 0 = none", category: "Suspension")]
+	protected float m_fKingpinLoad;
+
+	[Attribute("1", UIWidgets.EditBox, "How much the trailer leans out of a curve, 1 = as its mass and the height of its load make it, 0 = not at all", category: "Suspension")]
+	protected float m_fCurveLean;
+
 	[Attribute("7000", UIWidgets.EditBox, "Empty mass [kg]", category: "Cargo")]
 	protected float m_fEmptyMass;
 
+	[Attribute("20000", UIWidgets.EditBox, "Load the suspension is built for [kg]. A deck, cargo or supply box that takes more counts instead", category: "Suspension")]
+	protected float m_fRatedLoad;
+
+	[Attribute("0.6", UIWidgets.EditBox, "With the rated load the trailer sits this much deeper, part of the travel left above the compression at rest", category: "Suspension")]
+	protected float m_fLoadSink;
+
 	[Attribute("0", UIWidgets.EditBox, "Extra mass while something sits in the cargo slot [kg]", category: "Cargo")]
 	protected float m_fCargoMass;
+
+	// Vanilla supplies weigh nothing. The vanilla M923A1 cargo truck takes 1500 of them and the real
+	// truck carries 4.5 t off road, that is 3 kg each.
+	[Attribute("3", UIWidgets.EditBox, "Mass of one supply in the supply box [kg]", category: "Cargo")]
+	protected float m_fSupplyMass;
+
+	[Attribute("0.74", UIWidgets.EditBox, "Mass of one litre of fuel in a tank on the trailer [kg], as in the vanilla jerrycan", category: "Cargo")]
+	protected float m_fFuelMass;
 
 	[Attribute("Cargo", UIWidgets.EditBox, "SlotManager slot that holds the cargo", category: "Cargo")]
 	protected string m_sCargoSlot;
@@ -95,6 +118,8 @@ class SST_SemiTrailerComponent : ScriptComponent
 	protected BaseLightManagerComponent m_LightManager;
 	protected bool m_bSimulated;
 	protected bool m_bHasCargo;
+	protected float m_fFuel;			// fuel in the tanks of the cargo [l]
+	protected float m_fFuelRoom;		// most fuel they take [l]
 	protected int m_iCargoState = -1;
 	protected typename m_CargoType;
 
@@ -104,6 +129,7 @@ class SST_SemiTrailerComponent : ScriptComponent
 
 	protected bool m_bWheelsFound;
 	protected float m_fParkedTyres;
+	protected float m_fParkedSink;
 	protected float m_fKingpinToBogie = 9.6;
 	protected ref array<vector> m_aWheelPos = {};
 	protected ref array<SST_TrailerWheelComponent> m_aWheels = {};
@@ -264,6 +290,8 @@ class SST_SemiTrailerComponent : ScriptComponent
 			Park();
 		else if (!float.AlmostEqual(GetTyreState(), m_fParkedTyres))
 			Park(); // a tyre went flat (or was repaired)
+		else if (Math.AbsFloat(GetLoadSink() - m_fParkedSink) > 0.003)
+			Park(); // loaded or unloaded
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -284,6 +312,7 @@ class SST_SemiTrailerComponent : ScriptComponent
 		m_vParkPos = mat[3];
 		m_vParkAng = GetAngles(mat);
 		m_fParkedTyres = GetTyreState();
+		m_fParkedSink = GetLoadSink();
 		m_bParked = true;
 		m_fIdle = 0;
 		EnsurePhysics();
@@ -334,8 +363,10 @@ class SST_SemiTrailerComponent : ScriptComponent
 			legGround = (groundL + groundR) * 0.5;
 
 		// right is +x of the trailer (the side the right vector points to)
-		float axleL = groundL + GetSideRadius(-1);
-		float axleR = groundR + GetSideRadius(1);
+		// a loaded trailer stands deeper in its springs
+		float sink = GetLoadSink();
+		float axleL = groundL + GetSideRadius(-1) - sink;
+		float axleR = groundR + GetSideRadius(1) - sink;
 		float axleY = (axleL + axleR) * 0.5;
 		float roll = Math.Atan2(axleR - axleL, 2 * halfTrack);
 		float restAngle = Math.Atan2(-m_fAxleY, length);
@@ -526,6 +557,14 @@ class SST_SemiTrailerComponent : ScriptComponent
 	float GetRestCompression() { return m_fRestCompression; }
 	float GetTravel() { return m_fTravel; }
 	float GetAxleShare() { return m_fAxleShare; }
+	float GetDamping() { return m_fDamping; }
+
+	//------------------------------------------------------------------------------------------------
+	//! Weight on the kingpin that the tractor carries [kg]
+	float GetKingpinMass()
+	{
+		return GetMass() * (1 - m_fAxleShare) * m_fKingpinLoad;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	float GetMass()
@@ -534,7 +573,39 @@ class SST_SemiTrailerComponent : ScriptComponent
 		if (m_bHasCargo)
 			mass += m_fCargoMass;
 
-		return mass + GetExtraLoadMass();
+		return mass + m_fFuel * m_fFuelMass + GetExtraLoadMass() + GetTowedKingpinMass();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Mass of this trailer and everything it tows [kg]
+	float GetTrainMass()
+	{
+		float mass = GetMass() - GetTowedKingpinMass();
+
+		IEntity towed = GetTowedTrailer();
+		if (!towed)
+			return mass;
+
+		SST_SemiTrailerComponent comp = SST_SemiTrailerComponent.Cast(towed.FindComponent(SST_SemiTrailerComponent));
+		if (comp)
+			mass += comp.GetTrainMass();
+
+		return mass;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! A semitrailer that sits on this one (dolly) puts its kingpin weight on it [kg]
+	float GetTowedKingpinMass()
+	{
+		IEntity towed = GetTowedTrailer();
+		if (!towed)
+			return 0;
+
+		SST_SemiTrailerComponent comp = SST_SemiTrailerComponent.Cast(towed.FindComponent(SST_SemiTrailerComponent));
+		if (!comp || comp.HasDrawbar())
+			return 0;
+
+		return comp.GetMass() * (1 - comp.GetAxleShare());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -542,6 +613,57 @@ class SST_SemiTrailerComponent : ScriptComponent
 	float GetExtraLoadMass()
 	{
 		return 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Heaviest load the trailer is made for besides m_fRatedLoad [kg], add-ons with a deck or a
+	//! supply box override it
+	float GetRatedLoad()
+	{
+		return m_fCargoMass + m_fFuelRoom * m_fFuelMass;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! How deep the wheels sit in the suspension when the trailer stands still with its load [m].
+	//! Empty that is the compression at rest, with the rated load m_fLoadSink of the travel above it.
+	float GetStaticCompression()
+	{
+		float rated = Math.Max(m_fRatedLoad, GetRatedLoad());
+		if (rated <= 0)
+			return m_fRestCompression;
+
+		float load = Math.Clamp((GetMass() - m_fEmptyMass) / rated, 0, 1.5);
+		return m_fRestCompression + (m_fTravel - m_fRestCompression) * m_fLoadSink * load;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Height of the middle of the load, trailer space [m], add-ons with a deck override it
+	float GetLoadHeight()
+	{
+		return m_vCargoCenter[1];
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! How high the centre of mass of the trailer with its load is above the axles [m], times
+	//! m_fCurveLean. That is the lever a curve leans the trailer with.
+	float GetLeanArm()
+	{
+		float emptyArm = 1;
+		Physics phys = GetOwner().GetPhysics();
+		if (phys)
+			emptyArm = Math.Clamp(phys.GetCenterOfMass()[1] - m_fAxleY, 0.3, 2);
+
+		float mass = GetMass();
+		float load = Math.Max(mass - m_fEmptyMass, 0);
+		float loadArm = Math.Max(GetLoadHeight() - m_fAxleY, emptyArm);
+		return m_fCurveLean * (m_fEmptyMass * emptyArm + load * loadArm) / Math.Max(mass, 1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! How much deeper than empty the trailer stands with its load [m]
+	float GetLoadSink()
+	{
+		return GetStaticCompression() - m_fRestCompression;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -564,6 +686,27 @@ class SST_SemiTrailerComponent : ScriptComponent
 	void GetStrapBounds(IEntity load, out vector mins, out vector maxs)
 	{
 		load.GetBounds(mins, maxs);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Box around the body above the wheels, trailer space: what the trailer runs into buildings with.
+	//! Kerbs, low fences and the ground stay under it.
+	void GetBodyBox(out vector mins, out vector maxs)
+	{
+		GetOwner().GetBounds(mins, maxs);
+		if (m_bHasCargo)
+			maxs[1] = Math.Max(maxs[1], m_vCargoCenter[1] + m_vCargoSize[1] * 0.5);
+
+		mins[1] = Math.Max(mins[1], m_fAxleY + m_fWheelRadius);
+		if (maxs[1] - mins[1] < 0.1)
+			mins[1] = maxs[1] - 0.1;
+
+		// a little slimmer than the model, so it does not catch on a wall it only brushes
+		for (int axis = 0; axis < 3; axis += 2)
+		{
+			mins[axis] = mins[axis] + 0.05;
+			maxs[axis] = maxs[axis] - 0.05;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1034,6 +1177,19 @@ class SST_SemiTrailerComponent : ScriptComponent
 				AttachLoadedCargo();
 				return;
 			}
+		}
+
+		// a tank on the trailer weighs what is in it
+		m_fFuel = 0;
+		m_fFuelRoom = 0;
+		foreach (IEntity entity : cargo)
+		{
+			FuelManagerComponent fuel = FuelManagerComponent.Cast(entity.FindComponent(FuelManagerComponent));
+			if (!fuel)
+				continue;
+
+			m_fFuel += fuel.GetTotalFuel();
+			m_fFuelRoom += fuel.GetTotalMaxFuel();
 		}
 
 		int state = 0;

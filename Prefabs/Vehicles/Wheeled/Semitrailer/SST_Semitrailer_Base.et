@@ -200,9 +200,15 @@ GenericEntity {
      CONTENT_MODDED TRAIT_STEELS_TRUCKS
     }
     m_aAutoLabels {
-     FACTION_US ENTITYTYPE_SYSTEM THEME_MILITARY SIZE_L
+     FACTION_US ENTITYTYPE_SYSTEM SIZE_L
     }
     m_sFaction "US"
+    m_EntityBudgetCost {
+     SCR_EntityBudgetValue "{142347F905A6A7D5}" {
+      m_BudgetType CAMPAIGN
+      m_Value 100
+     }
+    }
    }
   }
   SCR_FactionAffiliationComponent "{4B7AA934EEE7DAA6}" {
