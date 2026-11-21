@@ -14,7 +14,7 @@ class SST_SemiTrailerComponent : ScriptComponent
 	[Attribute("-0.6", UIWidgets.EditBox, "Wheel centre height at rest, relative to the kingpin [m]", category: "Suspension")]
 	protected float m_fAxleY;
 
-	[Attribute("0.598", UIWidgets.EditBox, "Wheel radius [m]", category: "Suspension")]
+	[Attribute("0.57", UIWidgets.EditBox, "Radius the wheel stands on [m], as in the wheel simulation of the truck it is from (the tyre mesh is bigger)", category: "Suspension")]
 	protected float m_fWheelRadius;
 
 	[Attribute("0.2", UIWidgets.EditBox, "Suspension travel [m]", category: "Suspension")]
@@ -128,6 +128,7 @@ class SST_SemiTrailerComponent : ScriptComponent
 	protected int m_iCargoGeom = -1;
 
 	protected bool m_bWheelsFound;
+	protected bool m_bSlotsWatched;
 	protected float m_fParkedTyres;
 	protected float m_fParkedSink;
 	protected float m_fKingpinToBogie = 9.6;
@@ -197,6 +198,9 @@ class SST_SemiTrailerComponent : ScriptComponent
 			GetGame().GetCallqueue().Remove(ParkIfFree);
 			GetGame().GetCallqueue().Remove(CheckParked);
 		}
+
+		if (m_bSlotsWatched)
+			WatchSlots(owner, false);
 
 		s_aTrailers.RemoveItem(this);
 		super.OnDelete(owner);
@@ -538,6 +542,9 @@ class SST_SemiTrailerComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected float GetTyreState()
 	{
+		if (!m_bWheelsFound)
+			FindWheels(GetOwner());
+
 		float sum = 0;
 		for (int i = 0, n = m_aWheels.Count(); i < n; i++)
 		{
@@ -736,9 +743,22 @@ class SST_SemiTrailerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! The wheels are children with a SST_TrailerWheelComponent, in slots of the SlotManagerComponent
+	//! or placed in the prefab
 	protected void FindWheels(IEntity owner)
 	{
 		m_bWheelsFound = true;
+		if (!m_bSlotsWatched)
+		{
+			m_bSlotsWatched = true;
+			WatchSlots(owner, true);
+		}
+
+		m_aWheelPos.Clear();
+		m_aWheels.Clear();
+		m_aComp.Clear();
+		m_aTracks.Clear();
+
 		bool tracks = !System.IsConsoleApp() && !m_sTrackMaterial.IsEmpty();
 		float sumZ = 0;
 
@@ -784,6 +804,30 @@ class SST_SemiTrailerComponent : ScriptComponent
 
 		if (!m_aWheelPos.IsEmpty())
 			m_fKingpinToBogie = -sumZ / m_aWheelPos.Count();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! A slot can get its wheel after the trailer was set up (vanilla listens to its slots the same
+	//! way, SCR_VehicleInventoryStorageManagerComponent)
+	protected void WatchSlots(IEntity owner, bool watch)
+	{
+		array<EntitySlotInfo> slots = {};
+		EntitySlotInfo.GetSlotInfos(owner, slots);
+		foreach (EntitySlotInfo slot : slots)
+		{
+			if (watch)
+				slot.GetAttachedEntityInvoker().Insert(OnSlotFilled);
+			else
+				slot.GetAttachedEntityInvoker().Remove(OnSlotFilled);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnSlotFilled(IEntity entity)
+	{
+		// read the wheels again; the server then puts the trailer down on them (CheckParked)
+		if (entity && entity.FindComponent(SST_TrailerWheelComponent))
+			m_bWheelsFound = false;
 	}
 
 	//------------------------------------------------------------------------------------------------

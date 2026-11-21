@@ -4,8 +4,17 @@ GenericEntity : "{5A9FC4436FEDB824}Prefabs/Vehicles/Wheeled/M923A1/VehParts/Whee
   MeshObject "{4B42E716914465B9}" {
    Object "{FE848F530B59F5FB}Assets/Vehicles/Wheeled/M923A1/VehParts/Wheels/M923A1_rear_wheel.xob"
   }
+  SCR_DamageManagerComponent "{3EBB276D48AFFF41}" {
+   "Additional hit zones" {
+    SCR_WheelHitZone Wheel {
+     m_pDestructionHandler SCR_DestructionBaseHandler "{5D52E5E2978B8742}" {
+      m_bDeleteAfterParentDestroyed 0
+     }
+    }
+   }
+  }
   SST_TrailerWheelComponent "{E6A0EBCC122FC0F5}" {
-   m_fRadius 0.598
+   m_fRadius 0.57
   }
   BaseFlattenGrassComponent "{8B1CEF9D4E3DEDFD}" {
    ParametersCollection {

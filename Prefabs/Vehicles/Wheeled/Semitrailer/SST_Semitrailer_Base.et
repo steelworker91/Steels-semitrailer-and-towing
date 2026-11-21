@@ -13,6 +13,24 @@ GenericEntity {
     EntitySlotInfo Cargo {
      Offset 0 0.5 -4.933
     }
+    EntitySlotInfo Wheel_R01 {
+     Offset 0.915 -0.6 -8.925
+     Prefab "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et"
+    }
+    EntitySlotInfo Wheel_L01 {
+     Offset -0.915 -0.6 -8.925
+     Angles 0 180 0
+     Prefab "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et"
+    }
+    EntitySlotInfo Wheel_R02 {
+     Offset 0.915 -0.6 -10.275
+     Prefab "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et"
+    }
+    EntitySlotInfo Wheel_L02 {
+     Offset -0.915 -0.6 -10.275
+     Angles 0 180 0
+     Prefab "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et"
+    }
    }
   }
   BaseLightManagerComponent "{ACB15A5A00E935D7}" {
@@ -251,24 +269,6 @@ GenericEntity {
  {
   GenericEntity : "{B77BB5BB2F64142D}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TowHitch.et" {
    ID "D2485E865A656A0E"
-  }
-  GenericEntity : "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et" {
-   ID "7BA1AD9FA2476D17"
-   coords 0.915 -0.600 -8.925
-  }
-  GenericEntity : "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et" {
-   ID "4E257C88ADD45F42"
-   coords -0.915 -0.600 -8.925
-   angleY 180
-  }
-  GenericEntity : "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et" {
-   ID "CAD14862C7ED6A3F"
-   coords 0.915 -0.600 -10.275
-  }
-  GenericEntity : "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et" {
-   ID "1E7C79C41BE427F9"
-   coords -0.915 -0.600 -10.275
-   angleY 180
   }
  }
 }

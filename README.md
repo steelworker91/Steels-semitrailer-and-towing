@@ -307,6 +307,34 @@ A trailer is a `GenericEntity` with `SST_SemiTrailerComponent`; its origin is th
 | Fuel tank that refuels and burns | `SCR_FuelManagerComponent` in a slot (`m_sCargoComponent "SCR_FuelManagerComponent"` on the trailer), `SST_TankerDamageManagerComponent` | `SST_Semitrailer_Tanker.et` |
 | Rear tow hitch for a dolly | `SST_SemiTractorComponent` with `m_bTowHitch 1`, `SST_TowHitch.et` as child | `SST_Semitrailer_Base.et` (framework) |
 
+### Wheels
+
+A trailer wheel is a prefab with a `SST_TrailerWheelComponent`. The stock one is `SST_TrailerWheel.et`, the vanilla M923A1 rear wheel with its tyre hit zone and a hub. The wheels sit in slots of the trailer's `SlotManagerComponent`, one `EntitySlotInfo` per wheel, the way vanilla vehicles carry theirs:
+
+```
+SlotManagerComponent "{5BA4CFE569FEC603}" {
+ Slots {
+  EntitySlotInfo Wheel_R01 {
+   Offset 0.915 -0.6 -8.925
+   Prefab "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et"
+  }
+  EntitySlotInfo Wheel_L01 {
+   Offset -0.915 -0.6 -8.925
+   Angles 0 180 0
+   Prefab "{D553F41C315036F1}Prefabs/Vehicles/Wheeled/Semitrailer/Parts/SST_TrailerWheel.et"
+  }
+ }
+}
+```
+
+- `Offset` is the wheel centre in trailer space (the origin is the kingpin). The trailer takes its track and the place of its bogie from x and z of every wheel it finds. The height it stands at comes from `m_fAxleY` and `m_fWheelRadius` of the `SST_SemiTrailerComponent`, so keep the y of the offsets at `m_fAxleY`.
+- `m_fWheelRadius` (trailer) and `m_fRadius` (wheel prefab) are the radius the wheel **stands and rolls on**, not the radius of the tyre mesh. Take the `Radius` from the wheel simulation of the truck the wheel belongs to: `0.57` for the M923A1 wheel (the default), `0.6` for the Ural-4320. With the mesh radius the tyre only touches the ground with the tips of its tread and looks as if it floats; vanilla trucks stand a few centimetres into their tyres the same way. For a scaled wheel multiply by the scale.
+- Left wheels are turned around with `Angles 0 180 0`.
+- The slots need no bones in the model and their names are free (`Wheel_L01` is the vanilla pattern).
+- A child prefab of the trailer can give one slot another wheel prefab or move it, the other wheels stay as they are.
+- Wheels that are child entities in the trailer prefab are found as well.
+- On a trailer with a damage manager: vanilla destroys whatever sits in the slots of a destroyed entity and deletes parts whose destruction handler has `m_bDeleteAfterParentDestroyed` set, which is the default. `SST_TrailerWheel.et` switches it off, so a wreck keeps its wheels (with destroyed tyres). `SST_TankerDamageManagerComponent` repairs them together with the trailer.
+
 ### Load and suspension
 
 A loaded trailer sits deeper in its springs and swings slower. In a curve it leans outwards, more with a heavy and high load. What counts as load: the cargo in the cargo slot (`m_fCargoMass`), the vehicles on a deck, the supplies in a supply box (`m_fSupplyMass`, 3 kg each), the fuel in a tank (`m_fFuelMass`, 0.74 kg per litre as in the vanilla jerrycan; `m_fCargoMass` is then the empty tank) and a semitrailer that sits on a dolly.
@@ -324,6 +352,8 @@ Add-ons that put other loads on a trailer override `GetExtraLoadMass()` (what is
 ### Vehicle deck
 
 The "Load onto trailer" action is on every vehicle: the framework overrides the vanilla `Vehicle_Base.et` (and `VehicleSalvageActionEntity.et` for wrecks). It shows up next to a trailer with `SST_VehicleCarrierComponent` and puts the vehicle on the deck, front first. `SST_UnloadCarrierAction` at the rear takes the rearmost one off again.
+
+A vehicle is only loaded when it is empty and its engine is off ("Turn its engine off first"). While it stands on the deck its engine can't be started: `SST_CarrierEngine.c` refuses the start in the vanilla `OnBeforeEngineStart` of the vehicle controller, for cars and helicopters. Other scripts can ask `SST_VehicleCarrierComponent.IsOnDeck(vehicle)`.
 
 | Attribute | Default | What it does |
 | --------- | ------- | ------------ |

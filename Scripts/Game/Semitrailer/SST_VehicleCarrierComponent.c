@@ -201,6 +201,9 @@ class SST_VehicleCarrierComponent : ScriptComponent
 		if (HasOccupants(vehicle))
 			return "Vehicle is not empty";
 
+		if (IsEngineOn(vehicle))
+			return "Turn its engine off first";
+
 		SST_SemiTractorComponent tractor = SST_SemiTractorComponent.Cast(vehicle.FindComponent(SST_SemiTractorComponent));
 		if (tractor && tractor.GetTrailer())
 			return "Uncouple its trailer first";
@@ -833,6 +836,27 @@ class SST_VehicleCarrierComponent : ScriptComponent
 		}
 
 		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static bool IsEngineOn(IEntity vehicle)
+	{
+		Vehicle veh = Vehicle.Cast(vehicle);
+		if (!veh || !veh.GetVehicleController())
+			return false;
+
+		return veh.GetVehicleController().IsEngineOn();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! The vehicle stands on the deck of a carrier (it is a child of the trailer there, on every machine)
+	static bool IsOnDeck(IEntity vehicle)
+	{
+		IEntity parent = vehicle.GetParent();
+		if (!parent)
+			return false;
+
+		return parent.FindComponent(SST_VehicleCarrierComponent) != null;
 	}
 
 	//------------------------------------------------------------------------------------------------

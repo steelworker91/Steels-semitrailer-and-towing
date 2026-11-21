@@ -47,6 +47,11 @@ class SST_TankerDamageManagerComponent : SCR_DamageManagerComponent
 		if (newState == EDamageState.DESTROYED || previousDamageState == EDamageState.DESTROYED)
 			SetWreck(newState == EDamageState.DESTROYED);
 
+		// The wheels sit in slots, and vanilla destroys what is in the slots of a destroyed entity
+		// (SCR_DestructionBaseHandler). Repaired, the trailer gets its tyres back as well.
+		if (!isJIP && previousDamageState == EDamageState.DESTROYED && newState != EDamageState.DESTROYED && Replication.IsServer())
+			RepairWheels();
+
 		// a wreck is not towed
 		if (!isJIP && newState == EDamageState.DESTROYED && Replication.IsServer())
 			DropFromTractor();
@@ -64,6 +69,23 @@ class SST_TankerDamageManagerComponent : SCR_DamageManagerComponent
 
 		GetGame().GetCallqueue().CallLater(Burst, m_iBurstDelay, false, m_vBurstFront);
 		GetGame().GetCallqueue().CallLater(Burst, m_iBurstDelay * 2, false, m_vBurstRear);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RepairWheels()
+	{
+		IEntity child = GetOwner().GetChildren();
+		while (child)
+		{
+			if (child.FindComponent(SST_TrailerWheelComponent))
+			{
+				SCR_DamageManagerComponent wheelDamage = SCR_DamageManagerComponent.GetDamageManager(child);
+				if (wheelDamage)
+					wheelDamage.FullHeal();
+			}
+
+			child = child.GetSibling();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
